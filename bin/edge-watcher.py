@@ -76,7 +76,15 @@ def main():
     last_toggle_time = 0
     last_cfg_check_time = time.time()
 
-    sleep_duration = 0.8 # Start in deep sleep
+    sleep_duration = 0.5 # Start in deep sleep
+
+    # Single Lua query command: returns cx,cy,is_dragging (SUPER+mouse:272)
+    QUERY_CMD = (
+        "repl "
+        "local p = hl.get_cursor_pos() "
+        "local d = (hl.is_key_down(125) or hl.is_key_down(126)) and hl.is_key_down(272) "
+        "return tostring(p.x) .. \",\" .. tostring(p.y) .. \",\" .. tostring(d)"
+    )
 
     while True:
         time.sleep(sleep_duration)
@@ -104,17 +112,18 @@ def main():
                 except Exception:
                     pass
 
-        pos_str = query_socket(sock_path, "cursorpos")
-        if not pos_str or "," not in pos_str:
-            sleep_duration = 0.8
+        raw_resp = query_socket(sock_path, QUERY_CMD)
+        if not raw_resp or "," not in raw_resp:
+            sleep_duration = 0.5
             continue
 
         try:
-            parts = pos_str.split(",")
+            parts = raw_resp.split(",")
             cx = float(parts[0].strip())
             cy = float(parts[1].strip())
+            is_dragging = (parts[2].strip().lower() == "true")
         except Exception:
-            sleep_duration = 0.8
+            sleep_duration = 0.5
             continue
 
         # Find monitor
@@ -134,7 +143,7 @@ def main():
             curr_mon = (monitors_cache[0].get("x", 0), monitors_cache[0].get("y", 0), float(monitors_cache[0].get("width", 1920)) / scale, float(monitors_cache[0].get("height", 1080)) / scale)
 
         if not curr_mon:
-            sleep_duration = 0.8
+            sleep_duration = 0.5
             continue
 
         mx, my, mw, mh = curr_mon
@@ -142,34 +151,31 @@ def main():
         rel_y = cy - my
 
         # ==========================================
-        # 解法 1：自适应休眠层级调度 (Adaptive Sleep)
+        # 智能动态调度 (Adaptive Sleep Scheduling)
         # ==========================================
-        if is_open:
-            # 当 DropSpace 已展开时，高频监测拉回取消
+        if is_dragging or is_open:
+            # 正在拖拽窗口或面板已展开：30Hz 高速精准采样
             sleep_duration = 0.035
-        elif rel_y <= top_threshold * 2:
-            # 紧贴顶部边缘：最高灵敏度
-            sleep_duration = 0.035
-        elif rel_y <= 120:
-            # 接近屏幕上方：提升预备频率
-            sleep_duration = 0.08
+        elif rel_y <= 100:
+            # 光标靠近屏幕上方但未拖拽：适度待命
+            sleep_duration = 0.1
         elif rel_y <= 250:
-            # 中高区域：轻度休眠
+            # 过渡区域
             sleep_duration = 0.25
         else:
-            # 大部分正常工作区域（屏幕中下部）：深度休眠，CPU 占用 0.00%
-            sleep_duration = 0.8
+            # 日常绝大部分操作区域：深度休眠，0.00% CPU
+            sleep_duration = 0.5
 
-        # 触发区域：屏幕顶部中央 60%
+        # 触发区域判定：屏幕顶部中央 60%
         in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
 
-        # 唤出
-        if in_top_center and not is_open and (now - last_toggle_time) > 0.35:
+        # 核心判定：只有在【光标在顶部中心】且【正在按住 SUPER+左键 拖拽窗口】时才唤出！
+        if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = True
             last_toggle_time = now
 
-        # 拉回取消
+        # 拉回取消：如果在展开状态下将光标拉回下方（离开卡片区），自动隐藏
         elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = False
