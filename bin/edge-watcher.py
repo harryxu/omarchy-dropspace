@@ -4,6 +4,24 @@ import socket
 import subprocess
 import time
 import json
+import sys
+
+CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
+
+def load_config():
+    defaults = {
+        "edge_watcher": False,
+        "top_edge_threshold": 12,
+        "cancel_threshold": 180
+    }
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                user_cfg = json.load(f)
+                defaults.update(user_cfg)
+        except Exception:
+            pass
+    return defaults
 
 def get_socket_path():
     sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
@@ -38,20 +56,43 @@ def query_socket(sock_path, cmd):
         return None
 
 def main():
+    cfg = load_config()
+    # Check if edge_watcher is enabled in config
+    if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
+        print("edge_watcher is disabled in ~/.config/omarchy/dropspace.json. Exiting.")
+        return
+
     sock_path = get_socket_path()
     if not sock_path or not os.path.exists(sock_path):
         return
 
-    # Cache monitors info for 3 seconds
+    top_threshold = cfg.get("top_edge_threshold", 12)
+    cancel_threshold = cfg.get("cancel_threshold", 180)
+
     monitors_cache = []
     last_mon_time = 0
 
     is_open = False
     last_toggle_time = 0
+    last_cfg_check_time = time.time()
+
+    sleep_duration = 0.8 # Start in deep sleep
 
     while True:
-        time.sleep(0.035) # ~28Hz, ultra-low CPU (<0.1%)
+        time.sleep(sleep_duration)
         now = time.time()
+
+        # Check config changes every 5 seconds
+        if now - last_cfg_check_time > 5.0:
+            cfg = load_config()
+            if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
+                print("edge_watcher disabled via config change. Exiting.")
+                if is_open:
+                    subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                break
+            top_threshold = cfg.get("top_edge_threshold", 12)
+            cancel_threshold = cfg.get("cancel_threshold", 180)
+            last_cfg_check_time = now
 
         # Update monitors cache
         if now - last_mon_time > 3.0 or not monitors_cache:
@@ -65,6 +106,7 @@ def main():
 
         pos_str = query_socket(sock_path, "cursorpos")
         if not pos_str or "," not in pos_str:
+            sleep_duration = 0.8
             continue
 
         try:
@@ -72,9 +114,10 @@ def main():
             cx = float(parts[0].strip())
             cy = float(parts[1].strip())
         except Exception:
+            sleep_duration = 0.8
             continue
 
-        # Find which monitor contains the cursor
+        # Find monitor
         curr_mon = None
         for mon in monitors_cache:
             mx = mon.get("x", 0)
@@ -91,23 +134,43 @@ def main():
             curr_mon = (monitors_cache[0].get("x", 0), monitors_cache[0].get("y", 0), float(monitors_cache[0].get("width", 1920)) / scale, float(monitors_cache[0].get("height", 1080)) / scale)
 
         if not curr_mon:
+            sleep_duration = 0.8
             continue
 
         mx, my, mw, mh = curr_mon
         rel_x = cx - mx
         rel_y = cy - my
 
-        # Trigger zone: top edge (rel_y <= 12) and central 60% of monitor
-        in_top_center = (rel_y <= 12) and (mw * 0.20 <= rel_x <= mw * 0.80)
+        # ==========================================
+        # 解法 1：自适应休眠层级调度 (Adaptive Sleep)
+        # ==========================================
+        if is_open:
+            # 当 DropSpace 已展开时，高频监测拉回取消
+            sleep_duration = 0.035
+        elif rel_y <= top_threshold * 2:
+            # 紧贴顶部边缘：最高灵敏度
+            sleep_duration = 0.035
+        elif rel_y <= 120:
+            # 接近屏幕上方：提升预备频率
+            sleep_duration = 0.08
+        elif rel_y <= 250:
+            # 中高区域：轻度休眠
+            sleep_duration = 0.25
+        else:
+            # 大部分正常工作区域（屏幕中下部）：深度休眠，CPU 占用 0.00%
+            sleep_duration = 0.8
 
-        # Trigger open
+        # 触发区域：屏幕顶部中央 60%
+        in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
+
+        # 唤出
         if in_top_center and not is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = True
             last_toggle_time = now
 
-        # Auto-cancel: if pulled back down (rel_y > 180)
-        elif rel_y > 180 and is_open and (now - last_toggle_time) > 0.35:
+        # 拉回取消
+        elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = False
             last_toggle_time = now

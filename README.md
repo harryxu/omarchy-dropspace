@@ -3,42 +3,78 @@
 **DropSpace** 是专为 Omarchy / Hyprland 设计的可视化窗口工作区拖放插件。
 
 类似于 macOS Mission Control 或 Windows 11 Snap 体验：
-拖拽窗口并推向屏幕顶部中央区域时，系统会自动滑出各个工作区的卡片；将窗口拖拽至目标工作区后释放鼠标，即可自动将窗口移入该工作区并随之切换。
+在拖拽窗口至工作区卡片后松开鼠标，即可将窗口送入目标工作区并切换桌面。
 
-## ✨ 特性
+---
 
-- **零按键阻碍**：拖拽窗口移向屏幕顶部中心区域时，**自动感应滑出**工作区卡片，无需在拖拽中按任何按键，绝不打断拖拽手势。
-- **毫秒级响应**：基于 Omarchy Shell (Quickshell) 原生 Overlay 渲染，微秒级 IPC 通信。
-- **无感穿透（Click-through）**：使用 `mask: Region {}` 保证拖拽手势完全不受遮挡，丝滑流畅。
-- **原生主题融合**：自适应当前 Omarchy 主题背景、边框、圆角与字体规范。
-- **多重操作模式**：
-  1. **推顶自动滑出**：拖动窗口直接推向屏幕顶部中央，卡片自动滑出，释放鼠标即可落位。
-  2. **提前唤出**：也可以先按下快捷键 `SUPER + D` 手动开启/关闭工作区栏。
+## ✨ 核心亮点
+
+- **两种灵活模式**：
+  - **默认纯净模式（零后台进程）**：随时按下 `SUPER + D` 打开工作区栏，拖拽窗口释放落位。系统中 0 额外进程常驻！
+  - **推顶感应模式（自适应休眠）**：可配置开启 `edge-watcher`，拖动窗口往屏幕顶部一推自动滑出卡片。
+- **自适应智能休眠（Adaptive Sleep）**：
+  - 光标在屏幕日常工作区域（中下部 80%+ 面积）时，守护进程**进入深度休眠**（采样频率 1 秒一次），CPU 占用真正为 **0.0000%**；
+  - 只有靠近顶部边缘时才毫秒级唤醒；离开后立即恢复深度睡眠。
+- **开箱即用的 CLI 管理工具**：
+  - `dropspace status` 查看运行与配置状态
+  - `dropspace edge-watcher enable` 一键开启推顶感应
+  - `dropspace edge-watcher disable` 一键关闭推顶感应
+- **零输入阻碍（Click-through）**：使用 `mask: Region {}` 保证拖拽过程丝滑流畅。
+
+---
 
 ## 🎮 使用方法
 
-### 方式一：推顶自动拖放（最自然）
-1. 用 `SUPER + 鼠标左键` 拖动任意应用窗口。
-2. 将窗口顺势向上方推到屏幕顶部中央。
-3. 屏幕顶部自动滑出工作区 1 ~ 5 卡片栏。
-4. 将光标移到目标工作区卡片（如 Workspace 2）上方，**直接松开鼠标左键**。
-5. 窗口自动移入目标工作区，桌面自动跟随切换，卡片栏自动收起！
-6. **取消操作**：若不想移动，只需将鼠标向下拉回屏幕中央（离开顶部卡片区域）释放，卡片栏会自动缩回。
+### 默认模式：快捷键常开模式（系统 100% 纯净）
+1. 随时按下 `SUPER + D`，屏幕顶部滑出工作区 1 ~ 5 卡片；
+2. 用 `SUPER + 鼠标左键` 将目标窗口拖动到目标工作区卡片（如 Workspace 2）；
+3. **松开鼠标左键**，窗口自动进入该工作区并跟随跳转，卡片栏自动收起！
 
-### 方式二：手动开关模式
-1. 随时按下 `SUPER + D`，工作区栏保持展开。
-2. 拖拽窗口至目标卡片并松开鼠标，完成落位。
-3. 再次按 `SUPER + D` 可随时手动收起。
+### 可选模式：推顶自动滑出模式
+如果您希望体验“不按键盘、窗口往屏幕顶部一推自动滑出卡片”的体验：
+```bash
+dropspace edge-watcher enable
+```
+开启后：
+1. 用 `SUPER + 鼠标左键` 拖动窗口并推到屏幕顶部中央；
+2. 工作区卡片自动感应滑下；
+3. 移到目标卡片松开鼠标左键落位。
 
-## 📁 目录结构
+随时关闭恢复纯净模式：
+```bash
+dropspace edge-watcher disable
+```
+
+---
+
+## ⚙️ 配置文件
+
+配置文件位于 `~/.config/omarchy/dropspace.json`：
+```json
+{
+  "edge_watcher": false,
+  "top_edge_threshold": 12,
+  "cancel_threshold": 180
+}
+```
+- `edge_watcher`: `false`（默认关闭，0 进程）/ `true`（开启自适应推顶感应）。
+- `top_edge_threshold`: 触发顶边缘距离（像素，默认 12）。
+- `cancel_threshold`: 拉回取消判定距离（像素，默认 180）。
+
+---
+
+## 📁 项目结构
 
 ```
 dropspace/
-├── manifest.json            # Omarchy 插件元数据清单
-├── WorkspaceDrop.qml        # Quickshell 顶部卡片栏界面实现
+├── manifest.json                # Omarchy 插件元数据
+├── WorkspaceDrop.qml            # Quickshell 顶部卡片栏 UI
+├── config.example.json          # 默认配置模板
 ├── bin/
-│   ├── edge-watcher.py      # 顶部边缘感应守护进程
-│   ├── drop-handler.py      # 落位坐标计算与 Hyprland Lua 调度核心脚本
-│   └── drop-handler.sh      # 可执行包装脚本
+│   ├── dropspace                # 用户 CLI 控制工具 (已软链至 ~/.local/bin/dropspace)
+│   ├── dropspace-autostart.sh   # 开机自检自启脚本 (仅配置开启时启动)
+│   ├── edge-watcher.py          # 自适应节流边缘守护服务
+│   ├── drop-handler.py          # 落位坐标计算与 Hyprland Lua 调度核心
+│   └── drop-handler.sh          # 落位执行包装器
 └── README.md
 ```

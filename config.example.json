@@ -1,0 +1,5 @@
+{
+  "edge_watcher": false,
+  "top_edge_threshold": 12,
+  "cancel_threshold": 180
+}
