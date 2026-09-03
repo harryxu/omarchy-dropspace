@@ -58,13 +58,11 @@ Item {
   function open(payloadJson) {
     root.opened = true
     Quickshell.execDetached(["/usr/bin/touch", "/tmp/dropspace_is_open"])
-    Quickshell.execDetached(["/usr/bin/hyprctl", "eval", "return hl.bind('Escape', hl.dsp.exec_cmd('omarchy-shell dropspace hide'), {})"])
   }
 
   function close() {
     root.opened = false
     Quickshell.execDetached(["/usr/bin/rm", "-f", "/tmp/dropspace_is_open"])
-    Quickshell.execDetached(["/usr/bin/hyprctl", "eval", "return hl.unbind('Escape')"])
   }
 
   function dismiss() {

@@ -1,58 +1,82 @@
-# DropSpace (Omarchy Shell Plugin)
+# DropSpace
 
-**DropSpace** is a visual workspace drag-and-drop plugin for Omarchy and Hyprland.
+Visual workspace drag-and-drop overlay for Omarchy Quattro and Hyprland.
 
-It provides a workspace target bar at the top of the screen: drag a window onto a workspace card and release it to move the window to that workspace and switch focus.
+Drag a window onto a target workspace card at the top of the screen and release it to move the window and switch workspace focus seamlessly.
 
 ---
 
-## Features
+## Install
 
-- **Two Operation Modes**:
-  - **Default Mode (No background daemons)**: Press `SUPER + D` to toggle the workspace bar, drag a window onto a card, and release. No persistent background processes.
-  - **Top Edge Trigger (Adaptive sleep)**: Optional `edge-watcher` daemon that slides down the workspace bar when pushing a window toward the top edge.
-- **Adaptive Sleep**:
-  - When the cursor is in regular screen areas, the optional daemon stays in deep sleep (polling once per second) with negligible CPU overhead.
-  - Polling frequency ramps up only near the top edge and returns to deep sleep immediately after leaving.
-- **CLI Utility**:
-  - `dropspace status`: View daemon and configuration status.
-  - `dropspace edge-watcher enable`: Enable the top-edge trigger daemon.
-  - `dropspace edge-watcher disable`: Disable the top-edge trigger daemon.
-- **Input Transparency**: Uses `mask: Region {}` on the overlay panel to preserve compositor window drag gestures without input blocking.
+### 1. Add the Plugin to Omarchy
+
+```sh
+omarchy plugin add https://github.com/harryxu/dropspace.git --enable
+```
+
+### 2. Initialize Setup
+
+Run the setup helper to create the CLI symlink (`~/.local/bin/dropspace`) and initialize default configuration:
+
+```sh
+~/.config/omarchy/plugins/dropspace/bin/dropspace setup
+```
+
+### 3. Add Hyprland Keybindings
+
+Add the following bindings to `~/.config/hypr/bindings.lua`:
+
+```lua
+local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"
+o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '{}'")
+o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })
+```
+
+*(Optional)* If you plan to use the adaptive top-edge push trigger daemon, add this to `~/.config/hypr/autostart.lua`:
+
+```lua
+local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"
+o.exec_on_start(dropspace_autostart)
+```
+
+Reload Hyprland to apply the bindings:
+
+```sh
+hyprctl reload
+```
 
 ---
 
 ## Usage
 
-### Default: Keybind Trigger (Zero Background Daemons)
+### Default Mode (Zero Background Daemons)
 
 1. Press `SUPER + D` to toggle the workspace bar at the top of the screen.
-2. Drag the target window using `SUPER + Left Click` onto a target workspace card (e.g., Workspace 2).
-3. **Release the mouse button**: the window moves to that workspace, focus switches, and the workspace bar automatically closes.
+2. Drag any window using `SUPER + Left Click` onto a target workspace card (e.g., Workspace 2).
+3. **Release mouse button**: the window moves to that workspace, focus switches, and the workspace bar automatically closes.
+4. Press `Escape` or press `SUPER + D` again to dismiss without dropping.
 
 ### Optional: Top Edge Push Trigger
 
-To enable triggering by pushing a window to the top edge:
+To enable auto-summoning when pushing a window to the top edge:
 
-```bash
+```sh
 dropspace edge-watcher enable
 ```
 
-With this enabled:
-
-1. Drag a window with `SUPER + Left Click` toward the top center of the screen.
-2. The workspace bar automatically slides down.
-3. Hover over the desired workspace card and release the mouse button.
+With edge watcher enabled:
+1. Drag a window toward the top center of the screen; the bar automatically slides down.
+2. Hover over the desired workspace card and release.
 
 To disable and return to default mode:
 
-```bash
+```sh
 dropspace edge-watcher disable
 ```
 
 ---
 
-## Configuration
+## Configure
 
 Configuration file location: `~/.config/omarchy/dropspace.json`
 
@@ -64,24 +88,44 @@ Configuration file location: `~/.config/omarchy/dropspace.json`
 }
 ```
 
-- `edge_watcher`: `false` (default, disabled, no background daemon) / `true` (enable adaptive top-edge trigger).
-- `top_edge_threshold`: Distance from the top screen edge to trigger the panel (pixels, default: `12`).
-- `cancel_threshold`: Distance downward from the top edge to auto-dismiss when pulling away (pixels, default: `180`).
+- `edge_watcher`: `false` (default, disabled, zero background daemons) / `true` (adaptive top-edge trigger enabled).
+- `top_edge_threshold`: Distance from the top edge to summon the panel (pixels, default: `12`).
+- `cancel_threshold`: Downward distance from top edge to auto-dismiss (pixels, default: `180`).
 
 ---
 
-## Project Structure
+## Remove
 
+To safely and completely remove DropSpace without leaving dangling processes or broken bindings:
+
+### 1. Run the Uninstall Helper
+
+Stops running daemons, removes temporary files, and unlinks `~/.local/bin/dropspace`:
+
+```sh
+dropspace uninstall
 ```
-dropspace/
-├── manifest.json                # Omarchy plugin metadata
-├── WorkspaceDrop.qml            # Quickshell top card overlay UI
-├── config.example.json          # Default configuration template
-├── bin/
-│   ├── dropspace                # CLI management utility (symlinked to ~/.local/bin/dropspace)
-│   ├── dropspace-autostart.sh   # Autostart check script (starts daemon only if enabled)
-│   ├── edge-watcher.py          # Adaptive top-edge trigger daemon
-│   ├── drop-handler.py          # Drop coordinate calculation and Hyprland Lua dispatch
-│   └── drop-handler.sh          # Drop execution wrapper
-└── README.md
+
+*(Optional: pass `--purge` to delete `~/.config/omarchy/dropspace.json` as well).*
+
+### 2. Remove the Plugin from Omarchy
+
+```sh
+omarchy plugin remove dropspace
 ```
+
+### 3. Clean up Hyprland Configuration
+
+Remove or comment out the DropSpace lines from `~/.config/hypr/bindings.lua` (and `~/.config/hypr/autostart.lua` if added), then reload:
+
+```sh
+hyprctl reload
+```
+
+---
+
+## Dependencies & Permissions
+
+- **Runtime Dependencies**: `python3`, `hyprland`, `omarchy-shell` (Quickshell).
+- **Permissions**: Runs entirely within standard user permissions. Never requires `sudo`.
+- **Background Processes**: By default, **zero persistent background daemons** are used. The cursor tracker runs only while the overlay is actively open and terminates automatically when closed.

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # DropSpace autostart helper
 CONFIG="$HOME/.config/omarchy/dropspace.json"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+WATCHER="$SCRIPT_DIR/edge-watcher.py"
 
-if [ -f "$CONFIG" ] && grep -Eq '"edge_watcher"[[:space:]]*:[[:space:]]*true' "$CONFIG"; then
+if [ -f "$WATCHER" ] && [ -f "$CONFIG" ] && grep -Eq '"edge_watcher"[[:space:]]*:[[:space:]]*true' "$CONFIG"; then
     # Start edge-watcher in background if not already running
     if ! pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 &
+        nohup /usr/bin/env python3 "$WATCHER" >/dev/null 2>&1 &
     fi
 fi

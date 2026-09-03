@@ -75,9 +75,87 @@ with open(path, "w") as f: json.dump(d, f, indent=2)
     echo "Stopped edge-watcher daemon."
 }
 
+cmd_setup() {
+    ensure_config
+    echo "=== DropSpace Setup ==="
+    mkdir -p "$HOME/.local/bin"
+    local bin_target="$HOME/.local/bin/dropspace"
+    if [ -L "$bin_target" ] && [ "$(readlink -f "$bin_target")" = "$SCRIPT_DIR/dropspace" ]; then
+        echo "✓ CLI symlink: Already active at $bin_target"
+    else
+        ln -sf "$SCRIPT_DIR/dropspace" "$bin_target"
+        echo "✓ CLI symlink: Created $bin_target -> $SCRIPT_DIR/dropspace"
+    fi
+
+    echo "✓ Configuration initialized: $CONFIG"
+    echo ""
+    echo "Hyprland Configuration Guide:"
+    echo "1. Keybindings (in ~/.config/hypr/bindings.lua):"
+    echo '   local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
+    echo '   o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '\''{}'\''")'
+    echo '   o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
+    echo ""
+    echo "2. Optional Top Edge Autostart (in ~/.config/hypr/autostart.lua):"
+    echo '   local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"'
+    echo '   o.exec_on_start(dropspace_autostart)'
+    echo ""
+    echo "DropSpace setup complete!"
+}
+
+cmd_uninstall() {
+    echo "=== DropSpace Safe Uninstall Helper ==="
+    
+    # 1. Terminate daemon processes
+    if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
+        pkill -fa "edge-watcher.py" >/dev/null 2>&1 || true
+        echo "✓ Stopped running edge-watcher daemon."
+    fi
+
+    # 2. Remove temporary files
+    rm -f /tmp/dropspace_is_open /tmp/dropspace.log
+    echo "✓ Cleaned temporary runtime files."
+
+    # 3. Remove symlink if pointing to dropspace
+    local bin_target="$HOME/.local/bin/dropspace"
+    if [ -L "$bin_target" ]; then
+        local link_dest
+        link_dest="$(readlink -f "$bin_target" 2>/dev/null || true)"
+        if [[ "$link_dest" == *"/dropspace"* ]]; then
+            rm -f "$bin_target"
+            echo "✓ Removed CLI symlink: $bin_target"
+        fi
+    fi
+
+    # 4. Handle runtime configuration
+    if [ -f "$CONFIG" ]; then
+        if [[ "${1:-}" == "--purge" ]]; then
+            rm -f "$CONFIG"
+            echo "✓ Purged configuration file: $CONFIG"
+        else
+            echo "ℹ Configuration retained at: $CONFIG (pass --purge to delete)"
+        fi
+    fi
+
+    echo ""
+    echo "Next Steps to complete removal:"
+    echo "1. If configured, remove the DropSpace lines from ~/.config/hypr/bindings.lua"
+    echo "2. If configured, remove the DropSpace line from ~/.config/hypr/autostart.lua"
+    echo "3. Remove the plugin from Omarchy shell:"
+    echo "     omarchy plugin remove dropspace"
+    echo "4. Reload Hyprland configuration:"
+    echo "     hyprctl reload"
+}
+
 case "$1" in
     status)
         cmd_status
+        ;;
+    setup)
+        cmd_setup
+        ;;
+    uninstall|cleanup)
+        shift
+        cmd_uninstall "$@"
         ;;
     edge-watcher)
         case "$2" in
@@ -110,6 +188,8 @@ case "$1" in
         echo ""
         echo "Usage:"
         echo "  dropspace status                 Check current status and configuration"
+        echo "  dropspace setup                  Set up CLI symlink and show binding setup"
+        echo "  dropspace uninstall [--purge]    Stop daemons and clean up files before plugin removal"
         echo "  dropspace edge-watcher enable    Enable top-edge auto detection"
         echo "  dropspace edge-watcher disable   Disable top-edge auto detection (pure SUPER+D mode)"
         echo "  dropspace toggle                 Toggle workspace drop bar UI"
