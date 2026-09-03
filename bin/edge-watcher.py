@@ -11,7 +11,7 @@ CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
 def load_config():
     defaults = {
         "edge_watcher": False,
-        "top_edge_threshold": 12,
+        "top_edge_threshold": 16,
         "cancel_threshold": 180
     }
     if os.path.exists(CONFIG_PATH):
@@ -66,7 +66,7 @@ def main():
     if not sock_path or not os.path.exists(sock_path):
         return
 
-    top_threshold = cfg.get("top_edge_threshold", 12)
+    top_threshold = cfg.get("top_edge_threshold", 16)
     cancel_threshold = cfg.get("cancel_threshold", 180)
 
     monitors_cache = []
@@ -78,12 +78,20 @@ def main():
 
     sleep_duration = 0.5 # Start in deep sleep
 
-    # Single Lua query command: returns cx,cy,is_dragging (SUPER+mouse:272)
+    # Robust Lua query: gets cursor position and whether SUPER key is currently held
     QUERY_CMD = (
         "repl "
         "local p = hl.get_cursor_pos() "
-        "local d = (hl.is_key_down(125) or hl.is_key_down(126)) and hl.is_key_down(272) "
-        "return tostring(p.x) .. \",\" .. tostring(p.y) .. \",\" .. tostring(d)"
+        "local function is_super() "
+        "  local ok1, r1 = pcall(hl.is_key_down, 'Super_L') if ok1 and r1 then return true end "
+        "  local ok2, r2 = pcall(hl.is_key_down, 'Super_R') if ok2 and r2 then return true end "
+        "  local ok3, r3 = pcall(hl.is_key_down, 125) if ok3 and r3 then return true end "
+        "  local ok4, r4 = pcall(hl.is_key_down, 133) if ok4 and r4 then return true end "
+        "  return false "
+        "end "
+        "local w = hl.get_active_window() "
+        "local is_dragging = is_super() and (w ~= nil) "
+        "return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_dragging)"
     )
 
     while True:
@@ -98,7 +106,7 @@ def main():
                 if is_open:
                     subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 break
-            top_threshold = cfg.get("top_edge_threshold", 12)
+            top_threshold = cfg.get("top_edge_threshold", 16)
             cancel_threshold = cfg.get("cancel_threshold", 180)
             last_cfg_check_time = now
 
@@ -154,22 +162,21 @@ def main():
         # 智能动态调度 (Adaptive Sleep Scheduling)
         # ==========================================
         if is_dragging or is_open:
-            # 正在拖拽窗口或面板已展开：30Hz 高速精准采样
+            # 正在拖拽窗口（SUPER按下）或面板已展开：30Hz 高速采样
             sleep_duration = 0.035
         elif rel_y <= 100:
-            # 光标靠近屏幕上方但未拖拽：适度待命
+            # 靠近顶部边缘但未拖拽：适度待命
             sleep_duration = 0.1
         elif rel_y <= 250:
-            # 过渡区域
             sleep_duration = 0.25
         else:
-            # 日常绝大部分操作区域：深度休眠，0.00% CPU
+            # 日常大部分操作区域：深度休眠，0.00% CPU
             sleep_duration = 0.5
 
         # 触发区域判定：屏幕顶部中央 60%
         in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
 
-        # 核心判定：只有在【光标在顶部中心】且【正在按住 SUPER+左键 拖拽窗口】时才唤出！
+        # 核心判定：只有在【光标在顶部中心】且【正在按住 SUPER 拖拽窗口】时才唤出！
         if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = True
