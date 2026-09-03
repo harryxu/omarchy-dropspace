@@ -159,30 +159,30 @@ def main():
         rel_y = cy - my
 
         # ==========================================
-        # 智能动态调度 (Adaptive Sleep Scheduling)
+        # Adaptive Sleep Scheduling
         # ==========================================
         if is_dragging or is_open:
-            # 正在拖拽窗口（SUPER按下）或面板已展开：30Hz 高速采样
+            # Dragging window (SUPER pressed) or panel is open: sample at ~30Hz
             sleep_duration = 0.035
         elif rel_y <= 100:
-            # 靠近顶部边缘但未拖拽：适度待命
+            # Near top edge without dragging: moderate polling
             sleep_duration = 0.1
         elif rel_y <= 250:
             sleep_duration = 0.25
         else:
-            # 日常大部分操作区域：深度休眠，0.00% CPU
+            # Main screen area: deep sleep with minimal CPU usage
             sleep_duration = 0.5
 
-        # 触发区域判定：屏幕顶部中央 60%
+        # Trigger area: top-center 60% of the screen
         in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
 
-        # 核心判定：只有在【光标在顶部中心】且【正在按住 SUPER 拖拽窗口】时才唤出！
+        # Summon panel only when cursor is in the top center while dragging with SUPER
         if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = True
             last_toggle_time = now
 
-        # 拉回取消：如果在展开状态下将光标拉回下方（离开卡片区），自动隐藏
+        # Auto-hide when cursor is pulled back down below the cancel threshold
         elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
             subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             is_open = False
