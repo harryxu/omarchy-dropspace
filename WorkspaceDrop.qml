@@ -107,24 +107,20 @@ Item {
     // Transparent to input so mouse dragging windows is not interrupted
     mask: Region {}
 
-    // Full-screen scrim background fully synced with Omarchy theme
+    // Top workspace bar dock container with semi-transparent background
     Rectangle {
-      anchors.fill: parent
-      color: Color.menu.scrim
-      opacity: root.opened ? 1 : 0
-      Behavior on opacity {
-        NumberAnimation { duration: 150 }
-      }
-    }
-
-    // Top workspace cards container
-    Item {
       id: container
       anchors.top: parent.top
-      anchors.topMargin: root.opened ? root.topMargin : -root.cardHeight - 50
+      anchors.topMargin: root.opened ? root.topMargin : -height - 50
       anchors.horizontalCenter: parent.horizontalCenter
-      width: rowLayout.implicitWidth
-      height: rowLayout.implicitHeight
+      width: rowLayout.implicitWidth + 24
+      height: rowLayout.implicitHeight + 20
+      radius: (Style.cornerRadius > 0 ? Style.cornerRadius : 12) + 4
+
+      // Semi-transparent background only behind the workspace bar dock
+      color: Util.alpha(Color.menu.background, 0.82)
+      border.color: Color.menu.border
+      border.width: 1
 
       opacity: root.opened ? 1 : 0
 
@@ -137,6 +133,7 @@ Item {
 
       RowLayout {
         id: rowLayout
+        anchors.centerIn: parent
         spacing: root.cardSpacing
 
         Repeater {
