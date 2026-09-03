@@ -4,6 +4,7 @@ import socket
 import json
 import time
 import sys
+import signal
 
 BASE_CARD_WIDTH = 160
 CARD_HEIGHT = 100
@@ -207,4 +208,8 @@ def main():
         time.sleep(0.03)
 
 if __name__ == "__main__":
-    main()
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass

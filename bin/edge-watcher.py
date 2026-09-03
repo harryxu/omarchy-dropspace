@@ -5,6 +5,7 @@ import subprocess
 import time
 import json
 import sys
+import signal
 
 CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
 
@@ -94,99 +95,105 @@ def main():
         "return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_dragging)"
     )
 
-    while True:
-        time.sleep(sleep_duration)
-        now = time.time()
+    try:
+        while True:
+            time.sleep(sleep_duration)
+            now = time.time()
 
-        # Check config changes every 5 seconds
-        if now - last_cfg_check_time > 5.0:
-            cfg = load_config()
-            if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
-                print("edge_watcher disabled via config change. Exiting.")
-                if is_open:
-                    subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                break
-            top_threshold = cfg.get("top_edge_threshold", 16)
-            cancel_threshold = cfg.get("cancel_threshold", 180)
-            last_cfg_check_time = now
+            # Check config changes every 5 seconds
+            if now - last_cfg_check_time > 5.0:
+                cfg = load_config()
+                if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
+                    print("edge_watcher disabled via config change. Exiting.")
+                    break
+                top_threshold = cfg.get("top_edge_threshold", 16)
+                cancel_threshold = cfg.get("cancel_threshold", 180)
+                last_cfg_check_time = now
 
-        # Update monitors cache
-        if now - last_mon_time > 3.0 or not monitors_cache:
-            raw_mon = query_socket(sock_path, "j/monitors")
-            if raw_mon:
-                try:
-                    monitors_cache = json.loads(raw_mon)
-                    last_mon_time = now
-                except Exception:
-                    pass
+            # Update monitors cache
+            if now - last_mon_time > 3.0 or not monitors_cache:
+                raw_mon = query_socket(sock_path, "j/monitors")
+                if raw_mon:
+                    try:
+                        monitors_cache = json.loads(raw_mon)
+                        last_mon_time = now
+                    except Exception:
+                        pass
 
-        raw_resp = query_socket(sock_path, QUERY_CMD)
-        if not raw_resp or "," not in raw_resp:
-            sleep_duration = 0.5
-            continue
+            raw_resp = query_socket(sock_path, QUERY_CMD)
+            if not raw_resp or "," not in raw_resp:
+                sleep_duration = 0.5
+                continue
 
-        try:
-            parts = raw_resp.split(",")
-            cx = float(parts[0].strip())
-            cy = float(parts[1].strip())
-            is_dragging = (parts[2].strip().lower() == "true")
-        except Exception:
-            sleep_duration = 0.5
-            continue
+            try:
+                parts = raw_resp.split(",")
+                cx = float(parts[0].strip())
+                cy = float(parts[1].strip())
+                is_dragging = (parts[2].strip().lower() == "true")
+            except Exception:
+                sleep_duration = 0.5
+                continue
 
-        # Find monitor
-        curr_mon = None
-        for mon in monitors_cache:
-            mx = mon.get("x", 0)
-            my = mon.get("y", 0)
-            scale = float(mon.get("scale", 1.0))
-            mw = float(mon.get("width", 1920)) / scale
-            mh = float(mon.get("height", 1080)) / scale
-            if mx <= cx < mx + mw and my <= cy < my + mh:
-                curr_mon = (mx, my, mw, mh)
-                break
+            # Find monitor
+            curr_mon = None
+            for mon in monitors_cache:
+                mx = mon.get("x", 0)
+                my = mon.get("y", 0)
+                scale = float(mon.get("scale", 1.0))
+                mw = float(mon.get("width", 1920)) / scale
+                mh = float(mon.get("height", 1080)) / scale
+                if mx <= cx < mx + mw and my <= cy < my + mh:
+                    curr_mon = (mx, my, mw, mh)
+                    break
 
-        if not curr_mon and monitors_cache:
-            scale = float(monitors_cache[0].get("scale", 1.0))
-            curr_mon = (monitors_cache[0].get("x", 0), monitors_cache[0].get("y", 0), float(monitors_cache[0].get("width", 1920)) / scale, float(monitors_cache[0].get("height", 1080)) / scale)
+            if not curr_mon and monitors_cache:
+                scale = float(monitors_cache[0].get("scale", 1.0))
+                curr_mon = (monitors_cache[0].get("x", 0), monitors_cache[0].get("y", 0), float(monitors_cache[0].get("width", 1920)) / scale, float(monitors_cache[0].get("height", 1080)) / scale)
 
-        if not curr_mon:
-            sleep_duration = 0.5
-            continue
+            if not curr_mon:
+                sleep_duration = 0.5
+                continue
 
-        mx, my, mw, mh = curr_mon
-        rel_x = cx - mx
-        rel_y = cy - my
+            mx, my, mw, mh = curr_mon
+            rel_x = cx - mx
+            rel_y = cy - my
 
-        # ==========================================
-        # Adaptive Sleep Scheduling
-        # ==========================================
-        if is_dragging or is_open:
-            # Dragging window (SUPER pressed) or panel is open: sample at ~30Hz
-            sleep_duration = 0.035
-        elif rel_y <= 100:
-            # Near top edge without dragging: moderate polling
-            sleep_duration = 0.1
-        elif rel_y <= 250:
-            sleep_duration = 0.25
-        else:
-            # Main screen area: deep sleep with minimal CPU usage
-            sleep_duration = 0.5
+            # ==========================================
+            # Adaptive Sleep Scheduling
+            # ==========================================
+            if is_dragging or is_open:
+                # Dragging window (SUPER pressed) or panel is open: sample at ~30Hz
+                sleep_duration = 0.035
+            elif rel_y <= 100:
+                # Near top edge without dragging: moderate polling
+                sleep_duration = 0.1
+            elif rel_y <= 250:
+                sleep_duration = 0.25
+            else:
+                # Main screen area: deep sleep with minimal CPU usage
+                sleep_duration = 0.5
 
-        # Trigger area: top-center 60% of the screen
-        in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
+            # Trigger area: top-center 60% of the screen
+            in_top_center = (rel_y <= top_threshold) and (mw * 0.20 <= rel_x <= mw * 0.80)
 
-        # Summon panel only when cursor is in the top center while dragging with SUPER
-        if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
-            subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            is_open = True
-            last_toggle_time = now
+            # Summon panel only when cursor is in the top center while dragging with SUPER
+            if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
+                subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                is_open = True
+                last_toggle_time = now
 
-        # Auto-hide when cursor is pulled back down below the cancel threshold
-        elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
+            # Auto-hide when cursor is pulled back down below the cancel threshold
+            elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
+                subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                is_open = False
+                last_toggle_time = now
+    finally:
+        if is_open:
             subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            is_open = False
-            last_toggle_time = now
 
 if __name__ == "__main__":
-    main()
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass
