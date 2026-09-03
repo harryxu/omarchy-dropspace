@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # DropSpace CLI control utility
 CONFIG="$HOME/.config/omarchy/dropspace.json"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 ensure_config() {
     if [ ! -f "$CONFIG" ]; then
@@ -48,7 +49,7 @@ with open(path, "w") as f: json.dump(d, f, indent=2)
     
     # Start process if not running
     if ! pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        nohup /usr/bin/env python3 /home/harry/Work/dropspace/bin/edge-watcher.py >/dev/null 2>&1 &
+        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 &
         echo "Started edge-watcher daemon in background."
     else
         echo "edge-watcher daemon is already running."

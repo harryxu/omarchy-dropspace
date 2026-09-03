@@ -14,6 +14,9 @@ Item {
   property var shell: null
   property var manifest: null
 
+  readonly property string home: Quickshell.env("HOME")
+  readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : (home + "/.config/omarchy/plugins/dropspace")
+
   readonly property int baseCardWidth: 160
   readonly property int cardHeight: 100
   readonly property int cardSpacing: 16
@@ -97,7 +100,7 @@ Item {
 
   Process {
     id: cursorTracker
-    command: ["/usr/bin/python3", "/home/harry/Work/dropspace/bin/cursor-tracker.py"]
+    command: ["/usr/bin/python3", root.pluginDir + "/bin/cursor-tracker.py"]
     running: root.opened
     stdout: SplitParser {
       onRead: function(line) {
