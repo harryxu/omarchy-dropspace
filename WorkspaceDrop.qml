@@ -58,11 +58,13 @@ Item {
   function open(payloadJson) {
     root.opened = true
     Quickshell.execDetached(["/usr/bin/touch", "/tmp/dropspace_is_open"])
+    Quickshell.execDetached(["/usr/bin/hyprctl", "eval", "return hl.bind('Escape', hl.dsp.exec_cmd('omarchy-shell dropspace hide'), {})"])
   }
 
   function close() {
     root.opened = false
     Quickshell.execDetached(["/usr/bin/rm", "-f", "/tmp/dropspace_is_open"])
+    Quickshell.execDetached(["/usr/bin/hyprctl", "eval", "return hl.unbind('Escape')"])
   }
 
   function dismiss() {
@@ -84,7 +86,7 @@ Item {
       return "ok"
     }
     function hide(): string {
-      root.close()
+      root.dismiss()
       return "ok"
     }
     function toggle(): string {
@@ -96,6 +98,10 @@ Item {
     }
   }
 
+  Component.onDestruction: {
+    root.close()
+  }
+
   property int hoveredWorkspaceId: 0
 
   Process {
@@ -104,7 +110,12 @@ Item {
     running: root.opened
     stdout: SplitParser {
       onRead: function(line) {
-        var id = parseInt(String(line).trim())
+        var str = String(line).trim()
+        if (str === "dismiss" || str === "escape") {
+          root.dismiss()
+          return
+        }
+        var id = parseInt(str)
         if (!isNaN(id)) {
           root.hoveredWorkspaceId = id
         }

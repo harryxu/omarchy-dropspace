@@ -130,6 +130,7 @@ def main():
                 cx = float(parts[0].strip())
                 cy = float(parts[1].strip())
                 is_dragging = (parts[2].strip().lower() == "true")
+                is_open = os.path.exists("/tmp/dropspace_is_open")
             except Exception:
                 sleep_duration = 0.5
                 continue

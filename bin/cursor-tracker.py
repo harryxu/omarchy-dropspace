@@ -107,11 +107,17 @@ def main():
             "  local ok4, r4 = pcall(hl.is_key_down, 133) if ok4 and r4 then return true end "
             "  return false "
             "end "
+            "local function is_esc() "
+            "  local ok1, r1 = pcall(hl.is_key_down, 'Escape') if ok1 and r1 then return true end "
+            "  local ok2, r2 = pcall(hl.is_key_down, 9) if ok2 and r2 then return true end "
+            "  return false "
+            "end "
             "local w = hl.get_active_window() "
+            "local esc = is_esc() "
             "if not w then "
-            "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',none,0,0,0,0' "
+            "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',none,0,0,0,0,' .. tostring(esc) "
             "else "
-            "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',' .. tostring(w.address) .. ',' .. tostring(w.at.x) .. ',' .. tostring(w.at.y) .. ',' .. tostring(w.size.x) .. ',' .. tostring(w.size.y) "
+            "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',' .. tostring(w.address) .. ',' .. tostring(w.at.x) .. ',' .. tostring(w.at.y) .. ',' .. tostring(w.size.x) .. ',' .. tostring(w.size.y) .. ',' .. tostring(esc) "
             "end"
         )
         if not res_str or "," not in res_str:
@@ -128,6 +134,11 @@ def main():
             wy = float(parts[5].strip()) if len(parts) > 5 else 0.0
             ww = float(parts[6].strip()) if len(parts) > 6 else 0.0
             wh = float(parts[7].strip()) if len(parts) > 7 else 0.0
+            is_esc_down = (parts[8].strip().lower() == "true") if len(parts) > 8 else False
+            if is_esc_down:
+                print("escape", flush=True)
+                time.sleep(0.1)
+                continue
         except Exception:
             time.sleep(0.035)
             continue
