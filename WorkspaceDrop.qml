@@ -21,14 +21,16 @@ Item {
 
   function open(payloadJson) {
     root.opened = true
+    Quickshell.execDetached(["/usr/bin/touch", "/tmp/dropspace_is_open"])
   }
 
   function close() {
     root.opened = false
+    Quickshell.execDetached(["/usr/bin/rm", "-f", "/tmp/dropspace_is_open"])
   }
 
   function dismiss() {
-    root.opened = false
+    root.close()
     if (root.shell && typeof root.shell.hide === "function") {
       root.shell.hide((root.manifest && root.manifest.id) || "dropspace")
     }
