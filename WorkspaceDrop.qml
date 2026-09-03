@@ -14,10 +14,43 @@ Item {
   property var shell: null
   property var manifest: null
 
-  readonly property int cardWidth: 160
+  readonly property int baseCardWidth: 160
   readonly property int cardHeight: 100
   readonly property int cardSpacing: 16
   readonly property int topMargin: 36
+
+  function workspaceIds() {
+    var ids = []
+    var values = Hyprland.workspaces.values
+    var maxId = 1
+    for (var i = 0; i < values.length; i++) {
+      var id = values[i].id
+      if (id > 0) {
+        if (ids.indexOf(id) === -1) ids.push(id)
+        if (id > maxId) maxId = id
+      }
+    }
+    // Offer the next new empty workspace
+    if (ids.indexOf(maxId + 1) === -1) ids.push(maxId + 1)
+
+    // Ensure a sensible minimum (at least 1..4)
+    var minCount = 4
+    for (var m = 1; m <= minCount; m++) {
+      if (ids.indexOf(m) === -1) ids.push(m)
+    }
+
+    ids.sort(function(a, b) { return a - b })
+    return ids
+  }
+
+  readonly property var activeWorkspaceList: root.workspaceIds()
+  readonly property int cardWidth: {
+    var count = activeWorkspaceList.length
+    if (count <= 0) return baseCardWidth
+    var available = (panel.width > 0 ? panel.width : 1280) - 64
+    var computed = Math.floor((available - (count - 1) * cardSpacing) / count)
+    return Math.max(100, Math.min(baseCardWidth, computed))
+  }
 
   function open(payloadJson) {
     root.opened = true
@@ -107,7 +140,7 @@ Item {
         spacing: root.cardSpacing
 
         Repeater {
-          model: [1, 2, 3, 4, 5]
+          model: root.activeWorkspaceList
 
           Rectangle {
             id: card

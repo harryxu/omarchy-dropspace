@@ -6,12 +6,37 @@ import time
 
 LOG_FILE = "/tmp/dropspace.log"
 
-CARD_WIDTH = 160
+BASE_CARD_WIDTH = 160
 CARD_HEIGHT = 100
 CARD_SPACING = 16
-NUM_WORKSPACES = 5
 TOP_MARGIN = 36
-TOTAL_WIDTH = NUM_WORKSPACES * CARD_WIDTH + (NUM_WORKSPACES - 1) * CARD_SPACING
+
+def get_workspace_ids():
+    ws_json = run_cmd("hyprctl workspaces -j")
+    ids = []
+    max_id = 1
+    try:
+        workspaces = json.loads(ws_json)
+        for ws in workspaces:
+            wid = ws.get("id", 0)
+            if wid > 0:
+                if wid not in ids:
+                    ids.append(wid)
+                if wid > max_id:
+                    max_id = wid
+    except Exception:
+        pass
+
+    if (max_id + 1) not in ids:
+        ids.append(max_id + 1)
+
+    min_count = 4
+    for m in range(1, min_count + 1):
+        if m not in ids:
+            ids.append(m)
+
+    ids.sort()
+    return ids
 
 def log(msg):
     try:
@@ -96,27 +121,35 @@ def main():
     # Hide overlay now
     run_cmd("omarchy-shell dropspace hide")
 
-    # 5. Check if cursor is within top drop region
+    # 5. Dynamically calculate workspace cards
+    workspace_ids = get_workspace_ids()
+    count = len(workspace_ids)
+    log(f"Dynamic workspace IDs: {workspace_ids}")
+
+    available = mw - 64
+    card_width = max(100, min(BASE_CARD_WIDTH, int((available - (count - 1) * CARD_SPACING) // count)))
+    total_width = count * card_width + (count - 1) * CARD_SPACING
+
     # Active vertical zone: from screen top (0) to bottom of cards (+ generous tolerance)
     if rel_y < 0 or rel_y > (TOP_MARGIN + CARD_HEIGHT + 45):
         log(f"rel_y {rel_y} is outside drop zone [0, {TOP_MARGIN + CARD_HEIGHT + 45}]")
         return
 
-    start_x = (mw - TOTAL_WIDTH) / 2.0
-    end_x = start_x + TOTAL_WIDTH
-    log(f"Cards horizontal range: [{start_x}, {end_x}]")
+    start_x = (mw - total_width) / 2.0
+    end_x = start_x + total_width
+    log(f"Cards horizontal range: [{start_x}, {end_x}], card_width={card_width}")
 
     if rel_x < (start_x - 16) or rel_x > (end_x + 16):
         log(f"rel_x {rel_x} is outside horizontal range [{start_x - 16}, {end_x + 16}]")
         return
 
     offset_x = rel_x - start_x
-    slot_width = CARD_WIDTH + CARD_SPACING
+    slot_width = card_width + CARD_SPACING
     card_index = int(offset_x // slot_width)
     log(f"Calculated card_index: {card_index}")
 
-    if 0 <= card_index < NUM_WORKSPACES:
-        target_workspace = card_index + 1
+    if 0 <= card_index < count:
+        target_workspace = workspace_ids[card_index]
         cmd = f"hyprctl dispatch 'hl.dsp.window.move({{ workspace = \"{target_workspace}\" }})'"
         log(f"Moving to workspace {target_workspace}: {cmd}")
         run_cmd(cmd)
