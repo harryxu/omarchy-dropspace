@@ -107,10 +107,10 @@ Item {
     // Transparent to input so mouse dragging windows is not interrupted
     mask: Region {}
 
-    // Subtle dark scrim background
+    // Full-screen scrim background fully synced with Omarchy theme
     Rectangle {
       anchors.fill: parent
-      color: Util.alpha(Color.background, 0.45)
+      color: Color.menu.scrim
       opacity: root.opened ? 1 : 0
       Behavior on opacity {
         NumberAnimation { duration: 150 }
@@ -160,11 +160,12 @@ Item {
 
             Layout.preferredWidth: root.cardWidth
             Layout.preferredHeight: root.cardHeight
-            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 14
+            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 12
 
+            // Colors strictly bound to Omarchy theme
             color: card.isCurrent
-              ? Util.alpha(Color.menu.selectedBackground, 0.92)
-              : Util.alpha(Color.menu.background, 0.88)
+              ? Util.alpha(Color.accent, 0.16)
+              : Util.alpha(Color.menu.background, 0.95)
 
             border.color: card.isCurrent ? Color.accent : Color.menu.border
             border.width: card.isCurrent ? 2 : 1
@@ -173,23 +174,55 @@ Item {
               anchors.centerIn: parent
               spacing: 6
 
-              Text {
+              RowLayout {
                 Layout.alignment: Qt.AlignHCenter
-                text: "Workspace " + card.modelData
-                color: card.isCurrent ? Color.menu.selectedText : Color.menu.text
-                font.bold: true
-                font.pixelSize: Style.font.bodyLarge
-                font.family: Style.font.menuFamily
+                spacing: 6
+
+                Text {
+                  text: "󱂬"
+                  color: card.isCurrent ? Color.accent : Util.alpha(Color.menu.text, 0.7)
+                  font.pixelSize: Style.font.bodyLarge
+                  font.family: Style.font.menuFamily
+                }
+
+                Text {
+                  text: "Workspace " + card.modelData
+                  color: card.isCurrent ? Color.accent : Color.menu.text
+                  font.bold: true
+                  font.pixelSize: Style.font.bodyLarge
+                  font.family: Style.font.menuFamily
+                }
               }
 
-              Text {
+              // Status badge pill
+              Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                text: card.isCurrent
-                  ? "Current"
-                  : (card.windowCount > 0 ? (card.windowCount + (card.windowCount === 1 ? " window" : " windows")) : "Empty")
-                color: card.isCurrent ? Color.menu.selectedText : Util.alpha(Color.menu.text, 0.6)
-                font.pixelSize: Style.font.caption
-                font.family: Style.font.menuFamily
+                implicitWidth: badgeText.implicitWidth + 14
+                implicitHeight: badgeText.implicitHeight + 6
+                radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 8
+
+                color: card.isCurrent
+                  ? Color.accent
+                  : (card.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent")
+
+                border.color: card.isCurrent
+                  ? "transparent"
+                  : (card.windowCount > 0 ? "transparent" : Util.alpha(Color.muted, 0.4))
+                border.width: 1
+
+                Text {
+                  id: badgeText
+                  anchors.centerIn: parent
+                  text: card.isCurrent
+                    ? "Active"
+                    : (card.windowCount > 0 ? (card.windowCount + (card.windowCount === 1 ? " window" : " windows")) : "Empty")
+                  color: card.isCurrent
+                    ? Color.background
+                    : (card.windowCount > 0 ? Color.menu.text : Color.muted)
+                  font.bold: card.isCurrent
+                  font.pixelSize: Style.font.caption
+                  font.family: Style.font.menuFamily
+                }
               }
             }
           }
