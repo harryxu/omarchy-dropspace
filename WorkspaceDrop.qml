@@ -93,6 +93,22 @@ Item {
     }
   }
 
+  property int hoveredWorkspaceId: 0
+
+  Process {
+    id: cursorTracker
+    command: ["/usr/bin/python3", "/home/harry/Work/dropspace/bin/cursor-tracker.py"]
+    running: root.opened
+    stdout: SplitParser {
+      onRead: function(line) {
+        var id = parseInt(String(line).trim())
+        if (!isNaN(id)) {
+          root.hoveredWorkspaceId = id
+        }
+      }
+    }
+  }
+
   PanelWindow {
     id: panel
     visible: root.opened
@@ -153,19 +169,25 @@ Item {
 
             readonly property var ws: card.getWorkspace(modelData)
             readonly property bool isCurrent: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
+            readonly property bool isHovered: root.hoveredWorkspaceId === modelData
             readonly property int windowCount: ws !== null ? ws.toplevels.values.length : 0
 
             Layout.preferredWidth: root.cardWidth
             Layout.preferredHeight: root.cardHeight
             radius: Style.cornerRadius > 0 ? Style.cornerRadius : 12
 
-            // Colors strictly bound to Omarchy theme
-            color: card.isCurrent
-              ? Util.alpha(Color.accent, 0.16)
-              : Util.alpha(Color.menu.background, 0.95)
+            scale: card.isHovered ? 1.07 : 1.0
+            Behavior on scale {
+              NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
+            }
 
-            border.color: card.isCurrent ? Color.accent : Color.menu.border
-            border.width: card.isCurrent ? 2 : 1
+            // Colors strictly bound to Omarchy theme
+            color: card.isHovered
+              ? Util.alpha(Color.accent, 0.28)
+              : (card.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.95))
+
+            border.color: (card.isHovered || card.isCurrent) ? Color.accent : Color.menu.border
+            border.width: card.isHovered ? 3 : (card.isCurrent ? 2 : 1)
 
             ColumnLayout {
               anchors.centerIn: parent
@@ -176,15 +198,15 @@ Item {
                 spacing: 6
 
                 Text {
-                  text: "󱂬"
-                  color: card.isCurrent ? Color.accent : Util.alpha(Color.menu.text, 0.7)
+                  text: card.isHovered ? "󰁝" : "󱂬"
+                  color: (card.isHovered || card.isCurrent) ? Color.accent : Util.alpha(Color.menu.text, 0.7)
                   font.pixelSize: Style.font.bodyLarge
                   font.family: Style.font.menuFamily
                 }
 
                 Text {
                   text: "Workspace " + card.modelData
-                  color: card.isCurrent ? Color.accent : Color.menu.text
+                  color: (card.isHovered || card.isCurrent) ? Color.accent : Color.menu.text
                   font.bold: true
                   font.pixelSize: Style.font.bodyLarge
                   font.family: Style.font.menuFamily
@@ -198,11 +220,11 @@ Item {
                 implicitHeight: badgeText.implicitHeight + 6
                 radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 8
 
-                color: card.isCurrent
+                color: card.isHovered
                   ? Color.accent
-                  : (card.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent")
+                  : (card.isCurrent ? Color.accent : (card.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent"))
 
-                border.color: card.isCurrent
+                border.color: (card.isHovered || card.isCurrent)
                   ? "transparent"
                   : (card.windowCount > 0 ? "transparent" : Util.alpha(Color.muted, 0.4))
                 border.width: 1
@@ -210,13 +232,13 @@ Item {
                 Text {
                   id: badgeText
                   anchors.centerIn: parent
-                  text: card.isCurrent
-                    ? "Active"
-                    : (card.windowCount > 0 ? (card.windowCount + (card.windowCount === 1 ? " window" : " windows")) : "Empty")
-                  color: card.isCurrent
+                  text: card.isHovered
+                    ? "Drop to move"
+                    : (card.isCurrent ? "Active" : (card.windowCount > 0 ? (card.windowCount + (card.windowCount === 1 ? " window" : " windows")) : "Empty"))
+                  color: (card.isHovered || card.isCurrent)
                     ? Color.background
                     : (card.windowCount > 0 ? Color.menu.text : Color.muted)
-                  font.bold: card.isCurrent
+                  font.bold: card.isHovered || card.isCurrent
                   font.pixelSize: Style.font.caption
                   font.family: Style.font.menuFamily
                 }
