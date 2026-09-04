@@ -1,8 +1,11 @@
 # DropSpace
 
-Visual workspace drag-and-drop overlay for Omarchy Quattro and Hyprland.
+Visual workspace drag-and-drop overlay for Omarchy.
 
 Drag a window onto a target workspace card at the top of the screen and release it to move the window and switch workspace focus seamlessly.
+
+![Drop Space](preview.png)
+
 
 ---
 
@@ -11,7 +14,7 @@ Drag a window onto a target workspace card at the top of the screen and release 
 ### 1. Add the Plugin to Omarchy
 
 ```sh
-omarchy plugin add https://github.com/harryxu/dropspace.git --enable
+omarchy plugin add https://github.com/harryxu/omarchy-dropspace.git --enable
 ```
 
 ### 2. Initialize Setup
