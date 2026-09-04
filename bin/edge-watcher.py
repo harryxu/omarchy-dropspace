@@ -78,9 +78,15 @@ def main():
     last_toggle_time = 0
     last_cfg_check_time = time.time()
 
+    # Active window drag tracking state
+    is_actively_dragged = False
+    last_w_addr = None
+    last_w_pos = None
+    accumulated_drag = 0.0
+
     sleep_duration = 0.5 # Start in deep sleep
 
-    # Robust Lua query: gets cursor position and whether SUPER key is currently held
+    # Robust Lua query: cursor pos, SUPER key state, and active window position
     QUERY_CMD = (
         "repl "
         "local p = hl.get_cursor_pos() "
@@ -92,8 +98,11 @@ def main():
         "  return false "
         "end "
         "local w = hl.get_active_window() "
-        "local is_dragging = is_super() and (w ~= nil) "
-        "return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_dragging)"
+        "if not w then "
+        "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',none,0,0' "
+        "else "
+        "  return tostring(p.x) .. ',' .. tostring(p.y) .. ',' .. tostring(is_super()) .. ',' .. tostring(w.address) .. ',' .. tostring(w.at.x) .. ',' .. tostring(w.at.y) "
+        "end"
     )
 
     try:
@@ -130,7 +139,11 @@ def main():
                 parts = raw_resp.split(",")
                 cx = float(parts[0].strip())
                 cy = float(parts[1].strip())
-                is_dragging = (parts[2].strip().lower() == "true")
+                is_super_down = (parts[2].strip().lower() == "true")
+                w_addr = parts[3].strip() if len(parts) > 3 else "none"
+                wx = float(parts[4].strip()) if len(parts) > 4 else 0.0
+                wy = float(parts[5].strip()) if len(parts) > 5 else 0.0
+
                 file_open = os.path.exists("/tmp/dropspace_is_open")
                 if not file_open and (now - last_toggle_time > 0.4):
                     is_open = False
@@ -140,6 +153,30 @@ def main():
             except Exception:
                 sleep_duration = 0.5
                 continue
+
+            # Strict drag state evaluation:
+            # Active window is dragged if SUPER is held AND the window position physically moved!
+            if not is_super_down or w_addr == "none":
+                is_actively_dragged = False
+                last_w_addr = None
+                last_w_pos = None
+                accumulated_drag = 0.0
+            else:
+                if last_w_addr != w_addr:
+                    last_w_addr = w_addr
+                    last_w_pos = (wx, wy)
+                    accumulated_drag = 0.0
+                    is_actively_dragged = False
+                else:
+                    if last_w_pos is not None:
+                        dw = abs(wx - last_w_pos[0]) + abs(wy - last_w_pos[1])
+                        accumulated_drag += dw
+                        last_w_pos = (wx, wy)
+
+                        if accumulated_drag >= 8.0:
+                            is_actively_dragged = True
+
+            is_dragging = is_actively_dragged
 
             # Find monitor
             curr_mon = None
@@ -171,8 +208,8 @@ def main():
             if is_open and not summoned_by_edge:
                 # Panel was opened manually (e.g. SUPER+D): stay in deep sleep and do not interfere
                 sleep_duration = 0.5
-            elif is_dragging or (is_open and summoned_by_edge):
-                # Dragging window or edge-triggered panel active: sample at ~30Hz
+            elif is_dragging or (is_open and summoned_by_edge) or is_super_down:
+                # Dragging window, edge-triggered panel active, or SUPER is pressed: sample at ~30Hz
                 sleep_duration = 0.035
             elif rel_y <= 100:
                 # Near top edge without dragging: moderate polling

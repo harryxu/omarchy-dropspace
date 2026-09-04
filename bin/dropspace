@@ -71,7 +71,13 @@ with open(path, "w") as f: json.dump(d, f, indent=2)
     echo "Disabled edge_watcher in $CONFIG"
     
     # Stop process
-    pkill -f "edge-watcher.py" >/dev/null 2>&1
+    if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
+        pkill -fa "edge-watcher.py" >/dev/null 2>&1 || true
+        for _ in {1..20}; do
+            pgrep -fa "edge-watcher.py" >/dev/null 2>&1 || break
+            sleep 0.05
+        done
+    fi
     echo "Stopped edge-watcher daemon."
 }
 
