@@ -64,33 +64,46 @@ cmd_setup() {
         echo "✓ CLI symlink: Created $bin_target -> $SCRIPT_DIR/dropspace"
     fi
 
-    echo "✓ Configuration initialized: $CONFIG"
+    echo "✓ Configuration: $CONFIG"
     echo ""
-    echo "Hyprland Configuration Guide:"
-    echo "1. Keybindings (in ~/.config/hypr/bindings.lua):"
-    echo '   local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
-    echo '   o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '\''{}'\''")'
-    echo '   o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
+
+    local bindings_file="$HOME/.config/hypr/bindings.lua"
+    if [ -f "$bindings_file" ] && grep -q "dropspace" "$bindings_file"; then
+        echo "✓ Keybindings: Detected in ~/.config/hypr/bindings.lua"
+    else
+        echo "➜ Keybindings (add to ~/.config/hypr/bindings.lua):"
+        echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
+        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '\''{}'\''")'
+        echo '  o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
+    fi
     echo ""
-    echo "2. Optional Top Edge Autostart (in ~/.config/hypr/autostart.lua):"
-    echo '   local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"'
-    echo '   hl.exec_cmd(dropspace_autostart)'
+
+    local autostart_file="$HOME/.config/hypr/autostart.lua"
+    if [ -f "$autostart_file" ] && grep -q "dropspace-autostart.sh" "$autostart_file"; then
+        echo "✓ Top-edge trigger: Autostart detected in ~/.config/hypr/autostart.lua"
+    else
+        echo "➜ Top-edge trigger (optional, add to ~/.config/hypr/autostart.lua):"
+        echo '  local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"'
+        echo '  hl.exec_cmd(dropspace_autostart)'
+    fi
     echo ""
-    echo "DropSpace setup complete!"
+
+    echo "➜ Apply changes:"
+    echo "  hyprctl reload"
 }
 
 cmd_uninstall() {
-    echo "=== DropSpace Safe Uninstall Helper ==="
+    echo "=== DropSpace Uninstall ==="
     
     # 1. Terminate daemon processes
     if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
         pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
-        echo "✓ Stopped running edge-watcher daemon."
+        echo "✓ Stopped edge-watcher daemon"
     fi
 
     # 2. Remove temporary files
     rm -f /tmp/dropspace_is_open /tmp/dropspace.log
-    echo "✓ Cleaned temporary runtime files."
+    echo "✓ Cleaned temporary files"
 
     # 3. Remove symlink if pointing to dropspace
     local bin_target="$HOME/.local/bin/dropspace"
@@ -107,20 +120,26 @@ cmd_uninstall() {
     if [ -f "$CONFIG" ]; then
         if [[ "${1:-}" == "--purge" ]]; then
             rm -f "$CONFIG"
-            echo "✓ Purged configuration file: $CONFIG"
+            echo "✓ Purged configuration: $CONFIG"
         else
-            echo "ℹ Configuration retained at: $CONFIG (pass --purge to delete)"
+            echo "ℹ Configuration retained: $CONFIG (use --purge to delete)"
         fi
     fi
-
     echo ""
-    echo "Next Steps to complete removal:"
-    echo "1. If configured, remove the DropSpace lines from ~/.config/hypr/bindings.lua"
-    echo "2. If configured, remove the DropSpace line from ~/.config/hypr/autostart.lua"
-    echo "3. Remove the plugin from Omarchy shell:"
-    echo "     omarchy plugin remove dropspace"
-    echo "4. Reload Hyprland configuration:"
-    echo "     hyprctl reload"
+
+    echo "Cleanup steps:"
+    local bindings_file="$HOME/.config/hypr/bindings.lua"
+    if [ -f "$bindings_file" ] && grep -q "dropspace" "$bindings_file"; then
+        echo "  • Remove DropSpace lines from ~/.config/hypr/bindings.lua"
+    fi
+
+    local autostart_file="$HOME/.config/hypr/autostart.lua"
+    if [ -f "$autostart_file" ] && grep -q "dropspace-autostart.sh" "$autostart_file"; then
+        echo "  • Remove DropSpace line from ~/.config/hypr/autostart.lua"
+    fi
+
+    echo "  • Run: omarchy plugin remove dropspace"
+    echo "  • Run: hyprctl reload"
 }
 
 case "$1" in
