@@ -22,6 +22,8 @@ Item {
   readonly property int cardSpacing: 16
   readonly property int topMargin: 36
 
+  readonly property int maxWorkspaceCount: 5
+
   function workspaceIds() {
     var ids = []
     var values = Hyprland.workspaces.values
@@ -43,7 +45,7 @@ Item {
     }
 
     ids.sort(function(a, b) { return a - b })
-    return ids
+    return ids.slice(0, root.maxWorkspaceCount)
   }
 
   readonly property var activeWorkspaceList: root.workspaceIds()

@@ -10,6 +10,7 @@ BASE_CARD_WIDTH = 160
 CARD_HEIGHT = 100
 CARD_SPACING = 16
 TOP_MARGIN = 36
+MAX_WORKSPACE_COUNT = 5
 
 def get_socket_path():
     sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
@@ -90,7 +91,7 @@ def main():
                         if m not in ids:
                             ids.append(m)
                     ids.sort()
-                    workspace_ids = ids
+                    workspace_ids = ids[:MAX_WORKSPACE_COUNT]
                 except Exception:
                     pass
             last_meta_time = now

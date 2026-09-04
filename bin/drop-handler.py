@@ -11,6 +11,8 @@ CARD_HEIGHT = 100
 CARD_SPACING = 16
 TOP_MARGIN = 36
 
+MAX_WORKSPACE_COUNT = 5
+
 def get_workspace_ids():
     ws_json = run_cmd("hyprctl workspaces -j")
     ids = []
@@ -36,7 +38,7 @@ def get_workspace_ids():
             ids.append(m)
 
     ids.sort()
-    return ids
+    return ids[:MAX_WORKSPACE_COUNT]
 
 def log(msg):
     try:
