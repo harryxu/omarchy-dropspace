@@ -17,15 +17,7 @@ Drag a window onto a target workspace card at the top of the screen and release 
 omarchy plugin add https://github.com/harryxu/omarchy-dropspace.git --enable
 ```
 
-### 2. Initialize Setup
-
-Run the setup helper to create the CLI symlink (`~/.local/bin/dropspace`) and initialize default configuration:
-
-```sh
-~/.config/omarchy/plugins/dropspace/bin/dropspace setup
-```
-
-### 3. Add Hyprland Keybindings
+### 2. Add Hyprland Keybindings
 
 Add the following bindings to `~/.config/hypr/bindings.lua`:
 
@@ -35,17 +27,33 @@ o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell 
 o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })
 ```
 
-*(Optional)* If you plan to use the adaptive top-edge push trigger daemon, add this to `~/.config/hypr/autostart.lua`:
+Reload Hyprland to apply:
+
+```sh
+hyprctl reload
+```
+
+**That's it!** DropSpace is now ready to [use](#usage) with `SUPER + D`.
+
+---
+
+### Optional Setup
+
+#### Enable Top Edge Push Trigger
+If you want the workspace bar to automatically slide down when dragging a window toward the top edge, add this to `~/.config/hypr/autostart.lua`:
 
 ```lua
 local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"
 hl.exec_cmd(dropspace_autostart)
 ```
 
-Reload Hyprland to apply the bindings (and directly launch edge-watcher if added above):
+Then run `hyprctl reload` to launch it immediately.
+
+#### CLI Command Symlink
+If you want to use the `dropspace` CLI utility directly from anywhere in your terminal (to check status, view configuration, or uninstall), run the setup helper to create the `~/.local/bin/dropspace` symlink:
 
 ```sh
-hyprctl reload
+~/.config/omarchy/plugins/dropspace/bin/dropspace setup
 ```
 
 ---
@@ -97,6 +105,7 @@ Stops running daemons, removes temporary files, and unlinks `~/.local/bin/dropsp
 
 ```sh
 dropspace uninstall
+# (Or: ~/.config/omarchy/plugins/dropspace/bin/dropspace uninstall)
 ```
 
 *(Optional: pass `--purge` to delete `~/.config/omarchy/dropspace.json` as well).*
