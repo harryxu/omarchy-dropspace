@@ -131,3 +131,7 @@ hyprctl reload
 - **Runtime Dependencies**: `python3`, `hyprland`, `omarchy-shell` (Quickshell).
 - **Permissions**: Runs entirely within standard user permissions. Never requires `sudo`.
 - **Background Processes**: By default, **zero persistent background daemons** are used. The cursor tracker runs only while the overlay is actively open and terminates automatically when closed.
+
+## License
+
+[MIT](LICENSE)
