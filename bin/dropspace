@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 ensure_config() {
     if [ ! -f "$CONFIG" ]; then
         mkdir -p "$HOME/.config/omarchy"
-        echo '{"edge_watcher": false, "top_edge_threshold": 12, "cancel_threshold": 180}' > "$CONFIG"
+        echo '{"top_edge_threshold": 12, "cancel_threshold": 180}' > "$CONFIG"
     fi
 }
 
@@ -14,39 +14,21 @@ cmd_status() {
     ensure_config
     echo "=== DropSpace Status ==="
     
-    # Check config
-    if grep -Eq '"edge_watcher"[[:space:]]*:[[:space:]]*true' "$CONFIG"; then
-        echo "Configuration (edge_watcher) : ENABLED"
-    else
-        echo "Configuration (edge_watcher) : DISABLED (Default: pure SUPER+D mode)"
-    fi
-
     # Check process
     if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        echo "Background Process           : RUNNING (PID: $(pgrep -fa "edge-watcher.py" | awk '{print $1}'))"
+        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $(pgrep -fa "edge-watcher.py" | awk '{print $1}'))"
     else
-        echo "Background Process           : NOT RUNNING"
+        echo "Top-Edge Daemon (edge-watcher): NOT RUNNING (SUPER+D keybind mode only)"
     fi
 
     # Check UI state
     UI_STATE=$(omarchy-shell dropspace state 2>/dev/null || echo "unknown")
-    echo "DropSpace UI State           : $UI_STATE"
+    echo "DropSpace UI State            : $UI_STATE"
+    echo "Configuration file            : $CONFIG"
 }
 
 cmd_enable() {
     ensure_config
-    # Set edge_watcher to true in json
-    python3 -c '
-import json, os
-path = os.path.expanduser("~/.config/omarchy/dropspace.json")
-try:
-    with open(path) as f: d = json.load(f)
-except Exception: d = {}
-d["edge_watcher"] = True
-with open(path, "w") as f: json.dump(d, f, indent=2)
-'
-    echo "Enabled edge_watcher in $CONFIG"
-    
     # Start process if not running
     if ! pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
         nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 &
@@ -57,28 +39,17 @@ with open(path, "w") as f: json.dump(d, f, indent=2)
 }
 
 cmd_disable() {
-    ensure_config
-    # Set edge_watcher to false in json
-    python3 -c '
-import json, os
-path = os.path.expanduser("~/.config/omarchy/dropspace.json")
-try:
-    with open(path) as f: d = json.load(f)
-except Exception: d = {}
-d["edge_watcher"] = False
-with open(path, "w") as f: json.dump(d, f, indent=2)
-'
-    echo "Disabled edge_watcher in $CONFIG"
-    
     # Stop process
     if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        pkill -fa "edge-watcher.py" >/dev/null 2>&1 || true
+        pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
         for _ in {1..20}; do
             pgrep -fa "edge-watcher.py" >/dev/null 2>&1 || break
             sleep 0.05
         done
+        echo "Stopped edge-watcher daemon."
+    else
+        echo "edge-watcher daemon is not running."
     fi
-    echo "Stopped edge-watcher daemon."
 }
 
 cmd_setup() {
@@ -103,7 +74,7 @@ cmd_setup() {
     echo ""
     echo "2. Optional Top Edge Autostart (in ~/.config/hypr/autostart.lua):"
     echo '   local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"'
-    echo '   o.exec_on_start(dropspace_autostart)'
+    echo '   hl.exec_cmd(dropspace_autostart)'
     echo ""
     echo "DropSpace setup complete!"
 }
@@ -113,7 +84,7 @@ cmd_uninstall() {
     
     # 1. Terminate daemon processes
     if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        pkill -fa "edge-watcher.py" >/dev/null 2>&1 || true
+        pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
         echo "✓ Stopped running edge-watcher daemon."
     fi
 

@@ -39,10 +39,10 @@ o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_han
 
 ```lua
 local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"
-o.exec_on_start(dropspace_autostart)
+hl.exec_cmd(dropspace_autostart)
 ```
 
-Reload Hyprland to apply the bindings:
+Reload Hyprland to apply the bindings (and directly launch edge-watcher if added above):
 
 ```sh
 hyprctl reload
@@ -61,21 +61,13 @@ hyprctl reload
 
 ### Optional: Top Edge Push Trigger
 
-To enable auto-summoning when pushing a window to the top edge:
+If you added the optional autostart line to `~/.config/hypr/autostart.lua` during installation, top-edge triggering is automatically enabled:
 
-```sh
-dropspace edge-watcher enable
-```
+1. Drag any window with `SUPER + Left Click` toward the top center of the screen; the workspace bar automatically slides down.
+2. Hover over the desired workspace card and release the mouse button.
+3. If you change your mind, simply pull the window back down below the cancel threshold to auto-dismiss.
 
-With edge watcher enabled:
-1. Drag a window toward the top center of the screen; the bar automatically slides down.
-2. Hover over the desired workspace card and release.
-
-To disable and return to default mode:
-
-```sh
-dropspace edge-watcher disable
-```
+*(To disable top-edge triggering, simply remove or comment out the autostart line in `~/.config/hypr/autostart.lua` and reload Hyprland).*
 
 ---
 
@@ -85,15 +77,13 @@ Configuration file location: `~/.config/omarchy/dropspace.json`
 
 ```json
 {
-  "edge_watcher": false,
   "top_edge_threshold": 12,
   "cancel_threshold": 180
 }
 ```
 
-- `edge_watcher`: `false` (default, disabled, zero background daemons) / `true` (adaptive top-edge trigger enabled).
-- `top_edge_threshold`: Distance from the top edge to summon the panel (pixels, default: `12`).
-- `cancel_threshold`: Downward distance from top edge to auto-dismiss (pixels, default: `180`).
+- `top_edge_threshold`: Distance from the top screen edge to summon the panel (pixels, default: `12`).
+- `cancel_threshold`: Downward distance from the top edge to auto-dismiss when pulling away (pixels, default: `180`).
 
 ---
 

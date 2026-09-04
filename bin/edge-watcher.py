@@ -11,7 +11,6 @@ CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
 
 def load_config():
     defaults = {
-        "edge_watcher": False,
         "top_edge_threshold": 16,
         "cancel_threshold": 180
     }
@@ -57,16 +56,11 @@ def query_socket(sock_path, cmd):
         return None
 
 def main():
-    cfg = load_config()
-    # Check if edge_watcher is enabled in config
-    if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
-        print("edge_watcher is disabled in ~/.config/omarchy/dropspace.json. Exiting.")
-        return
-
     sock_path = get_socket_path()
     if not sock_path or not os.path.exists(sock_path):
         return
 
+    cfg = load_config()
     top_threshold = cfg.get("top_edge_threshold", 16)
     cancel_threshold = cfg.get("cancel_threshold", 180)
 
@@ -113,9 +107,6 @@ def main():
             # Check config changes every 5 seconds
             if now - last_cfg_check_time > 5.0:
                 cfg = load_config()
-                if not cfg.get("edge_watcher", False) and "--force" not in sys.argv:
-                    print("edge_watcher disabled via config change. Exiting.")
-                    break
                 top_threshold = cfg.get("top_edge_threshold", 16)
                 cancel_threshold = cfg.get("cancel_threshold", 180)
                 last_cfg_check_time = now
