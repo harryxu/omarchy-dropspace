@@ -214,7 +214,7 @@ Item {
                 Text {
                   text: card.isHovered ? "󰁝" : "󱂬"
                   color: (card.isHovered || card.isCurrent) ? Color.accent : Util.alpha(Color.menu.text, 0.7)
-                  font.pixelSize: Style.font.bodyLarge
+                  font.pixelSize: Style.font.title
                   font.family: Style.font.menuFamily
                 }
 
@@ -222,7 +222,7 @@ Item {
                   text: "Workspace " + card.modelData
                   color: (card.isHovered || card.isCurrent) ? Color.accent : Color.menu.text
                   font.bold: true
-                  font.pixelSize: Style.font.bodyLarge
+                  font.pixelSize: Style.font.title
                   font.family: Style.font.menuFamily
                 }
               }

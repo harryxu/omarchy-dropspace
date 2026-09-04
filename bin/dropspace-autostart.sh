@@ -6,7 +6,7 @@ WATCHER="$SCRIPT_DIR/edge-watcher.py"
 
 if [ -f "$WATCHER" ]; then
     # Start edge-watcher in background if not already running
-    if ! pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
+    if ! pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
         nohup /usr/bin/env python3 "$WATCHER" >/dev/null 2>&1 &
     fi
 fi

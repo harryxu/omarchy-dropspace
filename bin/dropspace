@@ -15,8 +15,12 @@ cmd_status() {
     echo "=== DropSpace Status ==="
     
     # Check process
-    if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $(pgrep -fa "edge-watcher.py" | awk '{print $1}'))"
+    local pids
+    pids="$(pgrep -f "[e]dge-watcher.py" 2>/dev/null || true)"
+    if [ -n "$pids" ]; then
+        local first_pid
+        first_pid="$(echo "$pids" | head -n 1)"
+        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $first_pid)"
     else
         echo "Top-Edge Daemon (edge-watcher): NOT RUNNING (SUPER+D keybind mode only)"
     fi
@@ -30,7 +34,7 @@ cmd_status() {
 cmd_enable() {
     ensure_config
     # Start process if not running
-    if ! pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
+    if ! pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
         nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 &
         echo "Started edge-watcher daemon in background."
     else
@@ -40,10 +44,10 @@ cmd_enable() {
 
 cmd_disable() {
     # Stop process
-    if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
+    if pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
         pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
         for _ in {1..20}; do
-            pgrep -fa "edge-watcher.py" >/dev/null 2>&1 || break
+            pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1 || break
             sleep 0.05
         done
         echo "Stopped edge-watcher daemon."

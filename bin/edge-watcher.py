@@ -23,19 +23,27 @@ def load_config():
             pass
     return defaults
 
-def get_socket_path():
-    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-    if not sig:
-        try:
-            hypr_dir = f"/run/user/{os.getuid()}/hypr"
-            entries = os.listdir(hypr_dir)
-            entries = [e for e in entries if not e.startswith(".")]
-            if entries:
-                sig = entries[0]
-        except Exception:
-            pass
-    if sig:
-        return f"/run/user/{os.getuid()}/hypr/{sig}/.socket.sock"
+def get_socket_path(timeout=15.0):
+    start = time.time()
+    while True:
+        sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+        if not sig:
+            try:
+                hypr_dir = f"/run/user/{os.getuid()}/hypr"
+                if os.path.exists(hypr_dir):
+                    entries = [e for e in os.listdir(hypr_dir) if not e.startswith(".")]
+                    if entries:
+                        sig = entries[0]
+            except Exception:
+                pass
+        if sig:
+            sock = f"/run/user/{os.getuid()}/hypr/{sig}/.socket.sock"
+            if os.path.exists(sock):
+                return sock
+
+        if (time.time() - start) >= timeout:
+            break
+        time.sleep(0.2)
     return None
 
 def query_socket(sock_path, cmd):
@@ -56,7 +64,8 @@ def query_socket(sock_path, cmd):
         return None
 
 def main():
-    sock_path = get_socket_path()
+    # Wait up to 15s for Hyprland IPC socket to become available on boot
+    sock_path = get_socket_path(timeout=15.0)
     if not sock_path or not os.path.exists(sock_path):
         return
 
