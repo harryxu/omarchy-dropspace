@@ -74,6 +74,7 @@ def main():
     last_mon_time = 0
 
     is_open = False
+    summoned_by_edge = False
     last_toggle_time = 0
     last_cfg_check_time = time.time()
 
@@ -130,7 +131,12 @@ def main():
                 cx = float(parts[0].strip())
                 cy = float(parts[1].strip())
                 is_dragging = (parts[2].strip().lower() == "true")
-                is_open = os.path.exists("/tmp/dropspace_is_open")
+                file_open = os.path.exists("/tmp/dropspace_is_open")
+                if not file_open and (now - last_toggle_time > 0.4):
+                    is_open = False
+                    summoned_by_edge = False
+                elif file_open:
+                    is_open = True
             except Exception:
                 sleep_duration = 0.5
                 continue
@@ -162,8 +168,11 @@ def main():
             # ==========================================
             # Adaptive Sleep Scheduling
             # ==========================================
-            if is_dragging or is_open:
-                # Dragging window (SUPER pressed) or panel is open: sample at ~30Hz
+            if is_open and not summoned_by_edge:
+                # Panel was opened manually (e.g. SUPER+D): stay in deep sleep and do not interfere
+                sleep_duration = 0.5
+            elif is_dragging or (is_open and summoned_by_edge):
+                # Dragging window or edge-triggered panel active: sample at ~30Hz
                 sleep_duration = 0.035
             elif rel_y <= 100:
                 # Near top edge without dragging: moderate polling
@@ -181,15 +190,18 @@ def main():
             if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
                 subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 is_open = True
+                summoned_by_edge = True
                 last_toggle_time = now
 
             # Auto-hide when cursor is pulled back down below the cancel threshold
-            elif rel_y > cancel_threshold and is_open and (now - last_toggle_time) > 0.35:
+            # IMPORTANT: Only auto-hide if DropSpace was summoned by edge watcher!
+            elif summoned_by_edge and is_open and rel_y > cancel_threshold and (now - last_toggle_time) > 0.35:
                 subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 is_open = False
+                summoned_by_edge = False
                 last_toggle_time = now
     finally:
-        if is_open:
+        if is_open and summoned_by_edge:
             subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
