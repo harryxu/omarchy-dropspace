@@ -26,7 +26,7 @@ cmd_status() {
     fi
 
     # Check UI state
-    UI_STATE=$(omarchy-shell dropspace state 2>/dev/null || echo "unknown")
+    UI_STATE=$(omarchy-shell harryxu.dropspace state 2>/dev/null || omarchy-shell dropspace state 2>/dev/null || echo "unknown")
     echo "DropSpace UI State            : $UI_STATE"
     echo "Configuration file            : $CONFIG"
 }
@@ -35,7 +35,7 @@ cmd_enable() {
     ensure_config
     # Start process if not running
     if ! pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
-        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 &
+        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 & disown 2>/dev/null || true
         echo "Started edge-watcher daemon in background."
     else
         echo "edge-watcher daemon is already running."
@@ -77,7 +77,7 @@ cmd_setup() {
     else
         echo "➜ Keybindings (add to ~/.config/hypr/bindings.lua):"
         echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
-        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '\''{}'\''")'
+        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '\''{}'\''")'
         echo '  o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
     fi
     echo ""
@@ -105,8 +105,13 @@ cmd_uninstall() {
         echo "✓ Stopped edge-watcher daemon"
     fi
 
-    # 2. Remove temporary files
-    rm -f /tmp/dropspace_is_open /tmp/dropspace.log
+    # 2. Remove runtime files and directory
+    local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/dropspace"
+    if [ -d "$runtime_dir" ]; then
+        rm -rf "$runtime_dir"
+        echo "✓ Cleaned runtime directory: $runtime_dir"
+    fi
+    rm -f /tmp/dropspace_is_open /tmp/dropspace.log 2>/dev/null || true
     echo "✓ Cleaned temporary files"
 
     # 3. Remove symlink if pointing to dropspace
@@ -175,13 +180,13 @@ case "$1" in
         esac
         ;;
     show)
-        omarchy-shell shell summon dropspace '{}'
+        omarchy-shell shell summon harryxu.dropspace '{}'
         ;;
     hide)
-        omarchy-shell shell hide dropspace
+        omarchy-shell shell hide harryxu.dropspace
         ;;
     toggle)
-        omarchy-shell shell toggle dropspace '{}'
+        omarchy-shell shell toggle harryxu.dropspace '{}'
         ;;
     *)
         echo "DropSpace - Omarchy Workspace Drag & Drop Tool"

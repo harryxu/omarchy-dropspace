@@ -3,8 +3,11 @@ import os
 import socket
 import json
 import time
-import sys
 import signal
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dropspace_runtime
 
 BASE_CARD_WIDTH = 160
 CARD_HEIGHT = 100
@@ -225,3 +228,8 @@ if __name__ == "__main__":
         main()
     except (KeyboardInterrupt, SystemExit):
         pass
+    finally:
+        try:
+            dropspace_runtime.set_state_closed()
+        except Exception:
+            pass

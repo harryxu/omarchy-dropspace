@@ -4,8 +4,11 @@ import socket
 import subprocess
 import time
 import json
-import sys
 import signal
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dropspace_runtime
 
 CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
 
@@ -144,7 +147,7 @@ def main():
                 wx = float(parts[4].strip()) if len(parts) > 4 else 0.0
                 wy = float(parts[5].strip()) if len(parts) > 5 else 0.0
 
-                file_open = os.path.exists("/tmp/dropspace_is_open")
+                file_open = dropspace_runtime.is_state_open()
                 if not file_open and (now - last_toggle_time > 0.4):
                     is_open = False
                     summoned_by_edge = False
@@ -225,7 +228,7 @@ def main():
 
             # Summon panel only when cursor is in the top center while dragging with SUPER
             if in_top_center and is_dragging and not is_open and (now - last_toggle_time) > 0.35:
-                subprocess.run(["omarchy-shell", "shell", "summon", "dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["omarchy-shell", "shell", "summon", "harryxu.dropspace", "{}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 is_open = True
                 summoned_by_edge = True
                 last_toggle_time = now
@@ -233,13 +236,13 @@ def main():
             # Auto-hide when cursor is pulled back down below the cancel threshold
             # IMPORTANT: Only auto-hide if DropSpace was summoned by edge watcher!
             elif summoned_by_edge and is_open and rel_y > cancel_threshold and (now - last_toggle_time) > 0.35:
-                subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["omarchy-shell", "shell", "hide", "harryxu.dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 is_open = False
                 summoned_by_edge = False
                 last_toggle_time = now
     finally:
         if is_open and summoned_by_edge:
-            subprocess.run(["omarchy-shell", "shell", "hide", "dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["omarchy-shell", "shell", "hide", "harryxu.dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))

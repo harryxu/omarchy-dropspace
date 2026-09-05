@@ -59,12 +59,12 @@ Item {
 
   function open(payloadJson) {
     root.opened = true
-    Quickshell.execDetached(["/usr/bin/touch", "/tmp/dropspace_is_open"])
+    Quickshell.execDetached(["/usr/bin/python3", root.pluginDir + "/bin/dropspace-state.py", "open"])
   }
 
   function close() {
     root.opened = false
-    Quickshell.execDetached(["/usr/bin/rm", "-f", "/tmp/dropspace_is_open"])
+    Quickshell.execDetached(["/usr/bin/python3", root.pluginDir + "/bin/dropspace-state.py", "close"])
   }
 
   function dismiss() {
@@ -80,7 +80,7 @@ Item {
   }
 
   IpcHandler {
-    target: "dropspace"
+    target: "harryxu.dropspace"
     function show(): string {
       root.open("{}")
       return "ok"
