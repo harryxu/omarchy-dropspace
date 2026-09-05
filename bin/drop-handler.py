@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 import sys
 import time
 
-LOG_FILE = "/tmp/dropspace.log"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dropspace_runtime
+
+dropspace_runtime.init_journal("dropspace-drop-handler")
 
 BASE_CARD_WIDTH = 160
 CARD_HEIGHT = 100
@@ -41,11 +45,7 @@ def get_workspace_ids():
     return ids[:MAX_WORKSPACE_COUNT]
 
 def log(msg):
-    try:
-        with open(LOG_FILE, "a") as f:
-            f.write(f"[{time.strftime('%X')}] {msg}\n")
-    except Exception:
-        pass
+    dropspace_runtime.log(msg)
 
 def run_cmd(cmd):
     try:

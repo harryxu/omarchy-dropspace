@@ -4,8 +4,11 @@ import socket
 import subprocess
 import time
 import json
-import sys
 import signal
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import dropspace_runtime
 
 CONFIG_PATH = os.path.expanduser("~/.config/omarchy/dropspace.json")
 
@@ -144,7 +147,7 @@ def main():
                 wx = float(parts[4].strip()) if len(parts) > 4 else 0.0
                 wy = float(parts[5].strip()) if len(parts) > 5 else 0.0
 
-                file_open = os.path.exists("/tmp/dropspace_is_open")
+                file_open = dropspace_runtime.is_state_open()
                 if not file_open and (now - last_toggle_time > 0.4):
                     is_open = False
                     summoned_by_edge = False

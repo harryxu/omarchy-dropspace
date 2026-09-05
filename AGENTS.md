@@ -55,7 +55,10 @@ DropSpace is an Omarchy Shell plugin for Hyprland that provides visual workspace
 - **Test Drop Handler (reads cursor position and logs result)**:
   ```bash
   python3 bin/drop-handler.py
-  cat /tmp/dropspace.log
+  # Check output in user journal:
+  journalctl --user -t dropspace-drop-handler -n 20
+  # Or inspect secure runtime log:
+  cat "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/dropspace/dropspace.log"
   ```
 - **Test Cursor Tracker (streams hovered workspace ID to stdout)**:
   ```bash
@@ -81,6 +84,8 @@ DropSpace is an Omarchy Shell plugin for Hyprland that provides visual workspace
 - `WorkspaceDrop.qml`: Main overlay interface. Hosts the top floating dock, dynamic cards, hover animation, and IPC handler.
 - `config.example.json`: Default configuration template.
 - `bin/dropspace`: User-facing CLI tool for checking status and toggling edge-watcher.
+- `bin/dropspace_runtime.py`: Secure runtime coordination module providing 0700 runtime directory, exclusive state tracking, and journal logging.
+- `bin/dropspace-state.py`: Coordination state CLI helper used by QML and background scripts.
 - `bin/dropspace-autostart.sh`: Conditional autostart script invoked by `~/.config/hypr/autostart.lua`.
 - `bin/drop-handler.py`: Core drop computation script. Evaluates cursor coordinates on mouse release and moves the active window via Hyprland Lua dispatch.
 - `bin/drop-handler.sh`: Executable wrapper for `drop-handler.py`.
