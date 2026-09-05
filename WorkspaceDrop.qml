@@ -80,7 +80,7 @@ Item {
   }
 
   IpcHandler {
-    target: "dropspace"
+    target: "harryxu.dropspace"
     function show(): string {
       root.open("{}")
       return "ok"

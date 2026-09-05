@@ -26,7 +26,7 @@ cmd_status() {
     fi
 
     # Check UI state
-    UI_STATE=$(omarchy-shell dropspace state 2>/dev/null || echo "unknown")
+    UI_STATE=$(omarchy-shell harryxu.dropspace state 2>/dev/null || omarchy-shell dropspace state 2>/dev/null || echo "unknown")
     echo "DropSpace UI State            : $UI_STATE"
     echo "Configuration file            : $CONFIG"
 }
@@ -77,7 +77,7 @@ cmd_setup() {
     else
         echo "➜ Keybindings (add to ~/.config/hypr/bindings.lua):"
         echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
-        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '\''{}'\''")'
+        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '\''{}'\''")'
         echo '  o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
     fi
     echo ""
@@ -180,13 +180,13 @@ case "$1" in
         esac
         ;;
     show)
-        omarchy-shell shell summon dropspace '{}'
+        omarchy-shell shell summon harryxu.dropspace '{}'
         ;;
     hide)
-        omarchy-shell shell hide dropspace
+        omarchy-shell shell hide harryxu.dropspace
         ;;
     toggle)
-        omarchy-shell shell toggle dropspace '{}'
+        omarchy-shell shell toggle harryxu.dropspace '{}'
         ;;
     *)
         echo "DropSpace - Omarchy Workspace Drag & Drop Tool"

@@ -23,7 +23,7 @@ Add the following bindings to `~/.config/hypr/bindings.lua`:
 
 ```lua
 local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"
-o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle dropspace '{}'")
+o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '{}'")
 o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })
 ```
 

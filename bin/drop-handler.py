@@ -59,7 +59,7 @@ def main():
     log("drop-handler invoked")
 
     # 1. Check if DropSpace is open
-    state = run_cmd("omarchy-shell dropspace state")
+    state = run_cmd("omarchy-shell harryxu.dropspace state")
     log(f"DropSpace state: '{state}'")
     if state != "open":
         log("DropSpace is not open, ignoring")
@@ -69,7 +69,7 @@ def main():
     cursor_str = run_cmd("hyprctl cursorpos")
     log(f"Cursor pos: '{cursor_str}'")
     if not cursor_str or "," not in cursor_str:
-        run_cmd("omarchy-shell dropspace hide")
+        run_cmd("omarchy-shell harryxu.dropspace hide")
         return
 
     try:
@@ -78,7 +78,7 @@ def main():
         cy = float(parts[1].strip())
     except Exception as e:
         log(f"Failed to parse cursorpos: {e}")
-        run_cmd("omarchy-shell dropspace hide")
+        run_cmd("omarchy-shell harryxu.dropspace hide")
         return
 
     # 3. Get monitors info
@@ -87,7 +87,7 @@ def main():
         monitors = json.loads(monitors_json)
     except Exception as e:
         log(f"Failed to parse monitors: {e}")
-        run_cmd("omarchy-shell dropspace hide")
+        run_cmd("omarchy-shell harryxu.dropspace hide")
         return
 
     # 4. Find which monitor contains the cursor
@@ -112,7 +112,7 @@ def main():
 
     if not target_mon:
         log("No monitor found for cursor")
-        run_cmd("omarchy-shell dropspace hide")
+        run_cmd("omarchy-shell harryxu.dropspace hide")
         return
 
     mon, mx, my, mw, mh = target_mon
@@ -121,7 +121,7 @@ def main():
     log(f"Monitor {mon.get('name')}: rel_x={rel_x}, rel_y={rel_y}, mw={mw}, mh={mh}")
 
     # Hide overlay now
-    run_cmd("omarchy-shell dropspace hide")
+    run_cmd("omarchy-shell harryxu.dropspace hide")
 
     # 5. Dynamically calculate workspace cards
     workspace_ids = get_workspace_ids()
