@@ -245,8 +245,15 @@ def main():
             subprocess.run(["omarchy-shell", "shell", "hide", "harryxu.dropspace"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
+    import atexit
+
+    dropspace_runtime.write_edge_watcher_pid(os.getpid())
+    atexit.register(dropspace_runtime.remove_edge_watcher_pid)
+
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     try:
         main()
     except (KeyboardInterrupt, SystemExit):
         pass
+    finally:
+        dropspace_runtime.remove_edge_watcher_pid()

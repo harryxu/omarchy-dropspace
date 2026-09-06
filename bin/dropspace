@@ -15,12 +15,10 @@ cmd_status() {
     echo "=== DropSpace Status ==="
     
     # Check process
-    local pids
-    pids="$(pgrep -f "[e]dge-watcher.py" 2>/dev/null || true)"
-    if [ -n "$pids" ]; then
-        local first_pid
-        first_pid="$(echo "$pids" | head -n 1)"
-        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $first_pid)"
+    local watcher_pid
+    watcher_pid="$(python3 "$SCRIPT_DIR/dropspace-state.py" watcher-pid 2>/dev/null || true)"
+    if [ -n "$watcher_pid" ]; then
+        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $watcher_pid)"
     else
         echo "Top-Edge Daemon (edge-watcher): NOT RUNNING (SUPER+D keybind mode only)"
     fi
@@ -34,8 +32,10 @@ cmd_status() {
 cmd_enable() {
     ensure_config
     # Start process if not running
-    if ! pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
-        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" >/dev/null 2>&1 & disown 2>/dev/null || true
+    if ! python3 "$SCRIPT_DIR/dropspace-state.py" watcher-running >/dev/null 2>&1; then
+        nohup /usr/bin/env python3 "$SCRIPT_DIR/edge-watcher.py" </dev/null >/dev/null 2>&1 &
+        local watcher_bg_pid=$!
+        disown "$watcher_bg_pid" 2>/dev/null || true
         echo "Started edge-watcher daemon in background."
     else
         echo "edge-watcher daemon is already running."
@@ -43,13 +43,9 @@ cmd_enable() {
 }
 
 cmd_disable() {
-    # Stop process
-    if pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1; then
-        pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
-        for _ in {1..20}; do
-            pgrep -f "[e]dge-watcher.py" >/dev/null 2>&1 || break
-            sleep 0.05
-        done
+    # Stop process using verified private PID
+    if python3 "$SCRIPT_DIR/dropspace-state.py" watcher-running >/dev/null 2>&1; then
+        python3 "$SCRIPT_DIR/dropspace-state.py" watcher-stop >/dev/null 2>&1 || true
         echo "Stopped edge-watcher daemon."
     else
         echo "edge-watcher daemon is not running."
@@ -99,9 +95,9 @@ cmd_setup() {
 cmd_uninstall() {
     echo "=== DropSpace Uninstall ==="
     
-    # 1. Terminate daemon processes
-    if pgrep -fa "edge-watcher.py" >/dev/null 2>&1; then
-        pkill -f "edge-watcher.py" >/dev/null 2>&1 || true
+    # 1. Terminate daemon processes using verified private PID
+    if python3 "$SCRIPT_DIR/dropspace-state.py" watcher-running >/dev/null 2>&1; then
+        python3 "$SCRIPT_DIR/dropspace-state.py" watcher-stop >/dev/null 2>&1 || true
         echo "✓ Stopped edge-watcher daemon"
     fi
 

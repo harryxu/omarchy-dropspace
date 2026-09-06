@@ -11,7 +11,7 @@ import dropspace_runtime
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: dropspace-state.py {open|close|check|path}", file=sys.stderr)
+        print("Usage: dropspace-state.py {open|close|check|path|watcher-pid|watcher-running|watcher-stop}", file=sys.stderr)
         sys.exit(2)
 
     action = sys.argv[1].lower()
@@ -26,6 +26,25 @@ def main():
             sys.exit(1)
     elif action == "path":
         print(dropspace_runtime.get_state_file_path())
+    elif action == "watcher-pid":
+        pid = dropspace_runtime.get_verified_edge_watcher_pid()
+        if pid is not None:
+            print(pid)
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    elif action == "watcher-running":
+        pid = dropspace_runtime.get_verified_edge_watcher_pid()
+        if pid is not None:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    elif action == "watcher-stop":
+        stopped = dropspace_runtime.stop_edge_watcher()
+        if stopped:
+            sys.exit(0)
+        else:
+            sys.exit(1)
     else:
         print(f"Unknown action: {action}", file=sys.stderr)
         sys.exit(2)

@@ -13,6 +13,7 @@ import syslog
 
 STATE_FILENAME = "dropspace_is_open"
 LOG_FILENAME = "dropspace.log"
+PID_FILENAME = "edge_watcher.pid"
 _syslog_initialized = False
 
 
@@ -200,3 +201,142 @@ def log(msg: str):
             os.close(fd)
     except Exception:
         pass
+
+
+def get_pid_file_path() -> str:
+    """Return path to the private edge-watcher PID file."""
+    return os.path.join(get_runtime_dir(), PID_FILENAME)
+
+
+def write_edge_watcher_pid(pid: int):
+    """Write edge-watcher PID to private runtime directory with mode 0600."""
+    pid_file = get_pid_file_path()
+
+    # Safely remove existing PID file if present
+    try:
+        if os.path.lexists(pid_file):
+            st = os.lstat(pid_file)
+            if stat.S_ISLNK(st.st_mode) or st.st_uid == os.getuid():
+                os.unlink(pid_file)
+    except OSError:
+        pass
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+    old_umask = os.umask(0o177)
+    try:
+        fd = os.open(pid_file, flags, 0o600)
+    finally:
+        os.umask(old_umask)
+
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid():
+            raise RuntimeError("PID file is not a regular file owned by current user")
+        if (st.st_mode & 0o777) != 0o600:
+            os.fchmod(fd, 0o600)
+        os.write(fd, f"{pid}\n".encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def remove_edge_watcher_pid():
+    """Safely remove private edge-watcher PID file."""
+    try:
+        pid_file = get_pid_file_path()
+        if os.path.lexists(pid_file):
+            st = os.lstat(pid_file)
+            if stat.S_ISLNK(st.st_mode) or st.st_uid == os.getuid():
+                os.unlink(pid_file)
+    except OSError:
+        pass
+
+
+def verify_process_identity(pid: int, expected_script: str = "edge-watcher.py") -> bool:
+    """Strictly verify PID is alive, owned by current UID, and matches target script."""
+    if pid <= 0 or pid == os.getpid():
+        return False
+
+    # 1. Check if process exists and current user can signal it
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+
+    # 2. Check proc entry ownership
+    proc_path = f"/proc/{pid}"
+    try:
+        st = os.stat(proc_path)
+        if st.st_uid != os.getuid():
+            return False
+    except OSError:
+        return False
+
+    # 3. Check cmdline for expected script
+    try:
+        with open(f"{proc_path}/cmdline", "rb") as f:
+            raw = f.read()
+        args = [arg.decode("utf-8", errors="ignore") for arg in raw.split(b"\0") if arg]
+        # Must match expected script in argument list
+        return any(expected_script in arg for arg in args)
+    except Exception:
+        return False
+
+
+def get_verified_edge_watcher_pid() -> int | None:
+    """Read private PID file and return PID only if process identity is verified."""
+    pid_file = get_pid_file_path()
+    try:
+        st = os.lstat(pid_file)
+        if not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
+            return None
+        if st.st_uid != os.getuid() or (st.st_mode & 0o777) != 0o600:
+            return None
+
+        with open(pid_file, "r") as f:
+            content = f.read().strip()
+        if not content:
+            return None
+        pid = int(content)
+
+        if verify_process_identity(pid, "edge-watcher.py"):
+            return pid
+        else:
+            # Stale or mismatched PID file; clean it up safely
+            remove_edge_watcher_pid()
+            return None
+    except Exception:
+        return None
+
+
+def stop_edge_watcher(timeout: float = 1.0) -> bool:
+    """Gracefully stop edge-watcher by sending SIGTERM to verified PID only."""
+    import signal
+
+    pid = get_verified_edge_watcher_pid()
+    if pid is None:
+        remove_edge_watcher_pid()
+        return False
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        remove_edge_watcher_pid()
+        return False
+
+    start = time.time()
+    while time.time() - start < timeout:
+        if not verify_process_identity(pid, "edge-watcher.py"):
+            remove_edge_watcher_pid()
+            return True
+        time.sleep(0.05)
+
+    # If still alive after timeout, send SIGKILL to verified PID as last resort
+    if verify_process_identity(pid, "edge-watcher.py"):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+
+    remove_edge_watcher_pid()
+    return True
+
