@@ -60,7 +60,7 @@ If you want to use the `dropspace` CLI utility directly from anywhere in your te
 
 ## Usage
 
-### Default Mode (Zero Background Daemons)
+### Default Mode (No Background Daemons)
 
 1. Press `SUPER + D` to toggle the workspace bar at the top of the screen.
 2. Drag any window using `SUPER + Left Click` onto a target workspace card (e.g., Workspace 2).
@@ -129,8 +129,8 @@ hyprctl reload
 ## Dependencies & Permissions
 
 - **Runtime Dependencies**: `python3`, `hyprland`, `omarchy-shell` (Quickshell).
-- **Permissions**: Runs entirely within standard user permissions. Never requires `sudo`.
-- **Background Processes**: By default, **zero persistent background daemons** are used. The cursor tracker runs only while the overlay is actively open and terminates automatically when closed.
+- **Permissions**: Runs entirely within standard user.
+- **Background Processes**: By default, **no persistent background daemons** are used. The cursor tracker runs only while the overlay is actively open and terminates automatically when closed.
 
 ## License
 
