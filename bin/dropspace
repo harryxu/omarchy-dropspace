@@ -72,7 +72,7 @@ cmd_setup() {
         echo "✓ Keybindings: Detected in ~/.config/hypr/bindings.lua"
     else
         echo "➜ Keybindings (add to ~/.config/hypr/bindings.lua):"
-        echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"'
+        echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/drop-handler.sh"'
         echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '\''{}'\''")'
         echo '  o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
     fi
@@ -83,7 +83,7 @@ cmd_setup() {
         echo "✓ Top-edge trigger: Autostart detected in ~/.config/hypr/autostart.lua"
     else
         echo "➜ Top-edge trigger (optional, add to ~/.config/hypr/autostart.lua):"
-        echo '  local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"'
+        echo '  local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace-autostart.sh"'
         echo '  hl.exec_cmd(dropspace_autostart)'
     fi
     echo ""
@@ -143,7 +143,7 @@ cmd_uninstall() {
         echo "  • Remove DropSpace line from ~/.config/hypr/autostart.lua"
     fi
 
-    echo "  • Run: omarchy plugin remove dropspace"
+    echo "  • Run: omarchy plugin remove harryxu.dropspace"
     echo "  • Run: hyprctl reload"
 }
 

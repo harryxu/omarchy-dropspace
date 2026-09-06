@@ -22,7 +22,7 @@ omarchy plugin add https://github.com/harryxu/omarchy-dropspace.git --enable
 Add the following bindings to `~/.config/hypr/bindings.lua`:
 
 ```lua
-local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/drop-handler.sh"
+local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/drop-handler.sh"
 o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '{}'")
 o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })
 ```
@@ -43,7 +43,7 @@ hyprctl reload
 If you want the workspace bar to automatically slide down when dragging a window toward the top edge, add this to `~/.config/hypr/autostart.lua`:
 
 ```lua
-local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/dropspace/bin/dropspace-autostart.sh"
+local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace-autostart.sh"
 hl.exec_cmd(dropspace_autostart)
 ```
 
@@ -53,7 +53,7 @@ Then run `hyprctl reload` to launch it immediately.
 If you want to use the `dropspace` CLI utility directly from anywhere in your terminal (to check status, view configuration, or uninstall), run the setup helper to create the `~/.local/bin/dropspace` symlink:
 
 ```sh
-~/.config/omarchy/plugins/dropspace/bin/dropspace setup
+~/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace setup
 ```
 
 ---
@@ -105,7 +105,7 @@ Stops running daemons, removes temporary files, and unlinks `~/.local/bin/dropsp
 
 ```sh
 dropspace uninstall
-# (Or: ~/.config/omarchy/plugins/dropspace/bin/dropspace uninstall)
+# (Or: ~/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace uninstall)
 ```
 
 *(Optional: pass `--purge` to delete `~/.config/omarchy/dropspace.json` as well).*
@@ -113,7 +113,7 @@ dropspace uninstall
 ### 2. Remove the Plugin from Omarchy
 
 ```sh
-omarchy plugin remove dropspace
+omarchy plugin remove harryxu.dropspace
 ```
 
 ### 3. Clean up Hyprland Configuration
