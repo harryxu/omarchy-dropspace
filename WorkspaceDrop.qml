@@ -61,6 +61,7 @@ Item {
   property var workspaceAspects: ({})
 
   function updateWindowData(jsonStr) {
+    if (!jsonStr || typeof jsonStr !== "string" || jsonStr.trim().indexOf("{") !== 0) return
     try {
       var data = JSON.parse(jsonStr)
       var monitors = data.monitors || []
@@ -180,6 +181,11 @@ Item {
     Quickshell.execDetached(["/usr/bin/python3", root.pluginDir + "/bin/dropspace-state.py", "close"])
   }
 
+  function switchToWorkspace(wsId) {
+    Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \"" + wsId + "\" })"])
+    root.dismiss()
+  }
+
   function dismiss() {
     root.close()
     if (root.shell && typeof root.shell.hide === "function") {
@@ -247,8 +253,8 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
 
-    // Transparent to input so mouse dragging windows is not interrupted
-    mask: Region {}
+    // Allow mouse clicks on the container dock while keeping the rest click-through
+    mask: Region { item: container }
 
     // Top workspace bar dock container with semi-transparent background
     Rectangle {
@@ -296,7 +302,8 @@ Item {
 
             readonly property var ws: workspaceSlot.getWorkspace(modelData)
             readonly property bool isCurrent: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
-            readonly property bool isHovered: root.hoveredWorkspaceId === modelData
+            readonly property bool isDropTarget: root.hoveredWorkspaceId === modelData
+            readonly property bool isMouseHovered: cardMouseArea.containsMouse || textMouseArea.containsMouse
             readonly property var windowList: root.workspaceWindows[modelData] || []
             readonly property int windowCount: windowList.length
             readonly property string workspaceName: (ws && ws.name && ws.name !== "" && ws.name !== String(modelData)) ? ws.name : ("Workspace " + modelData)
@@ -315,23 +322,25 @@ Item {
               radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 6
               clip: true
 
-              scale: workspaceSlot.isHovered ? 1.05 : 1.0
+              scale: workspaceSlot.isDropTarget ? 1.05 : (workspaceSlot.isMouseHovered ? 1.03 : 1.0)
               Behavior on scale {
                 NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
               }
 
               // Colors strictly bound to Omarchy theme
-              color: workspaceSlot.isHovered
+              color: workspaceSlot.isDropTarget
                 ? Util.alpha(Color.accent, 0.28)
-                : (workspaceSlot.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.88))
+                : (workspaceSlot.isMouseHovered
+                    ? Util.alpha(Color.accent, 0.22)
+                    : (workspaceSlot.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.88)))
 
-              border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.border
-              border.width: workspaceSlot.isHovered ? 3 : (workspaceSlot.isCurrent ? 2 : 1)
+              border.color: (workspaceSlot.isDropTarget || workspaceSlot.isMouseHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.border
+              border.width: workspaceSlot.isDropTarget ? 3 : ((workspaceSlot.isMouseHovered || workspaceSlot.isCurrent) ? 2 : 1)
 
               // Empty workspace placeholder
               Text {
                 anchors.centerIn: parent
-                visible: workspaceSlot.windowCount === 0 && !workspaceSlot.isHovered
+                visible: workspaceSlot.windowCount === 0 && !workspaceSlot.isDropTarget
                 text: "Empty"
                 color: Util.alpha(Color.muted, 0.65)
                 font.pixelSize: Style.font.caption
@@ -371,7 +380,7 @@ Item {
               // Drop indicator pill when dragging over this card
               Rectangle {
                 anchors.centerIn: parent
-                visible: workspaceSlot.isHovered
+                visible: workspaceSlot.isDropTarget
                 implicitWidth: dropRow.implicitWidth + 14
                 implicitHeight: dropRow.implicitHeight + 6
                 radius: 6
@@ -397,18 +406,36 @@ Item {
                   }
                 }
               }
+
+              // Mouse interaction area for clicking card to switch workspace
+              MouseArea {
+                id: cardMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.switchToWorkspace(workspaceSlot.modelData)
+              }
             }
 
             // Workspace name displayed below the card
             Text {
+              id: wsNameText
               Layout.alignment: Qt.AlignHCenter
               text: workspaceSlot.workspaceName
-              color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.text
+              color: (workspaceSlot.isDropTarget || workspaceSlot.isMouseHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.text
               font.bold: true
               font.pixelSize: Style.font.title
               font.family: Style.font.menuFamily
               elide: Text.ElideRight
               Layout.maximumWidth: root.cardWidth + 10
+
+              MouseArea {
+                id: textMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.switchToWorkspace(workspaceSlot.modelData)
+              }
             }
           }
         }
