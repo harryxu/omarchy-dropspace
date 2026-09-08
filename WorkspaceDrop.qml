@@ -18,7 +18,7 @@ Item {
   readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : (home + "/.config/omarchy/plugins/harryxu.dropspace")
 
   readonly property int baseCardWidth: 160
-  readonly property int cardHeight: 100
+  readonly property int cardHeight: 88
   readonly property int cardSpacing: 16
   readonly property int topMargin: 36
 
@@ -144,7 +144,7 @@ Item {
       anchors.topMargin: root.opened ? root.topMargin : -height - 50
       anchors.horizontalCenter: parent.horizontalCenter
       width: rowLayout.implicitWidth + 24
-      height: rowLayout.implicitHeight + 20
+      height: rowLayout.implicitHeight + 24
       radius: (Style.cornerRadius > 0 ? Style.cornerRadius : 12) + 4
 
       // Semi-transparent background only behind the workspace bar dock
@@ -169,8 +169,8 @@ Item {
         Repeater {
           model: root.activeWorkspaceList
 
-          Rectangle {
-            id: card
+          ColumnLayout {
+            id: workspaceSlot
             required property int modelData
 
             function getWorkspace(wsId) {
@@ -181,82 +181,91 @@ Item {
               return null
             }
 
-            readonly property var ws: card.getWorkspace(modelData)
+            readonly property var ws: workspaceSlot.getWorkspace(modelData)
             readonly property bool isCurrent: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
             readonly property bool isHovered: root.hoveredWorkspaceId === modelData
             readonly property int windowCount: ws !== null ? ws.toplevels.values.length : 0
+            readonly property string workspaceName: (ws && ws.name && ws.name !== "" && ws.name !== String(modelData)) ? ws.name : ("Workspace " + modelData)
 
-            Layout.preferredWidth: root.cardWidth
-            Layout.preferredHeight: root.cardHeight
-            radius: Style.cornerRadius > 0 ? Style.cornerRadius : 12
+            spacing: 8
+            Layout.alignment: Qt.AlignHCenter
 
-            scale: card.isHovered ? 1.07 : 1.0
-            Behavior on scale {
-              NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
-            }
+            Rectangle {
+              id: card
 
-            // Colors strictly bound to Omarchy theme
-            color: card.isHovered
-              ? Util.alpha(Color.accent, 0.28)
-              : (card.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.95))
+              Layout.preferredWidth: root.cardWidth
+              Layout.preferredHeight: root.cardHeight
+              Layout.alignment: Qt.AlignHCenter
+              radius: Style.cornerRadius > 0 ? Style.cornerRadius : 12
 
-            border.color: (card.isHovered || card.isCurrent) ? Color.accent : Color.menu.border
-            border.width: card.isHovered ? 3 : (card.isCurrent ? 2 : 1)
+              scale: workspaceSlot.isHovered ? 1.05 : 1.0
+              Behavior on scale {
+                NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
+              }
 
-            ColumnLayout {
-              anchors.centerIn: parent
-              spacing: 6
+              // Colors strictly bound to Omarchy theme
+              color: workspaceSlot.isHovered
+                ? Util.alpha(Color.accent, 0.28)
+                : (workspaceSlot.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.95))
 
-              RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+              border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.border
+              border.width: workspaceSlot.isHovered ? 3 : (workspaceSlot.isCurrent ? 2 : 1)
+
+              ColumnLayout {
+                anchors.centerIn: parent
                 spacing: 6
 
                 Text {
-                  text: card.isHovered ? "󰁝" : "󱂬"
-                  color: (card.isHovered || card.isCurrent) ? Color.accent : Util.alpha(Color.menu.text, 0.7)
-                  font.pixelSize: Style.font.title
+                  Layout.alignment: Qt.AlignHCenter
+                  text: workspaceSlot.isHovered ? "󰁝" : "󱂬"
+                  color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Util.alpha(Color.menu.text, 0.7)
+                  font.pixelSize: Style.font.display
                   font.family: Style.font.menuFamily
                 }
 
-                Text {
-                  text: "Workspace " + card.modelData
-                  color: (card.isHovered || card.isCurrent) ? Color.accent : Color.menu.text
-                  font.bold: true
-                  font.pixelSize: Style.font.title
-                  font.family: Style.font.menuFamily
-                }
-              }
+                // Status badge pill
+                Rectangle {
+                  Layout.alignment: Qt.AlignHCenter
+                  implicitWidth: badgeText.implicitWidth + 14
+                  implicitHeight: badgeText.implicitHeight + 6
+                  radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 8
 
-              // Status badge pill
-              Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: badgeText.implicitWidth + 14
-                implicitHeight: badgeText.implicitHeight + 6
-                radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 8
+                  color: workspaceSlot.isHovered
+                    ? Color.accent
+                    : (workspaceSlot.isCurrent ? Color.accent : (workspaceSlot.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent"))
 
-                color: card.isHovered
-                  ? Color.accent
-                  : (card.isCurrent ? Color.accent : (card.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent"))
+                  border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent)
+                    ? "transparent"
+                    : (workspaceSlot.windowCount > 0 ? "transparent" : Util.alpha(Color.muted, 0.4))
+                  border.width: 1
 
-                border.color: (card.isHovered || card.isCurrent)
-                  ? "transparent"
-                  : (card.windowCount > 0 ? "transparent" : Util.alpha(Color.muted, 0.4))
-                border.width: 1
-
-                Text {
-                  id: badgeText
-                  anchors.centerIn: parent
-                  text: card.isHovered
-                    ? "Drop to move"
-                    : (card.isCurrent ? "Active" : (card.windowCount > 0 ? (card.windowCount + (card.windowCount === 1 ? " window" : " windows")) : "Empty"))
-                  color: (card.isHovered || card.isCurrent)
-                    ? Color.background
-                    : (card.windowCount > 0 ? Color.menu.text : Color.muted)
-                  font.bold: card.isHovered || card.isCurrent
-                  font.pixelSize: Style.font.caption
-                  font.family: Style.font.menuFamily
+                  Text {
+                    id: badgeText
+                    anchors.centerIn: parent
+                    text: workspaceSlot.isHovered
+                      ? "Drop to move"
+                      : (workspaceSlot.isCurrent ? "Active" : (workspaceSlot.windowCount > 0 ? (workspaceSlot.windowCount + (workspaceSlot.windowCount === 1 ? " window" : " windows")) : "Empty"))
+                    color: (workspaceSlot.isHovered || workspaceSlot.isCurrent)
+                      ? Color.background
+                      : (workspaceSlot.windowCount > 0 ? Color.menu.text : Color.muted)
+                    font.bold: workspaceSlot.isHovered || workspaceSlot.isCurrent
+                    font.pixelSize: Style.font.caption
+                    font.family: Style.font.menuFamily
+                  }
                 }
               }
+            }
+
+            // Workspace name displayed below the card
+            Text {
+              Layout.alignment: Qt.AlignHCenter
+              text: workspaceSlot.workspaceName
+              color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.text
+              font.bold: true
+              font.pixelSize: Style.font.title
+              font.family: Style.font.menuFamily
+              elide: Text.ElideRight
+              Layout.maximumWidth: root.cardWidth + 10
             }
           }
         }

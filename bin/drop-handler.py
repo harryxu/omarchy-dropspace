@@ -11,7 +11,7 @@ import dropspace_runtime
 dropspace_runtime.init_journal("dropspace-drop-handler")
 
 BASE_CARD_WIDTH = 160
-CARD_HEIGHT = 100
+CARD_HEIGHT = 88
 CARD_SPACING = 16
 TOP_MARGIN = 36
 
@@ -133,8 +133,8 @@ def main():
     total_width = count * card_width + (count - 1) * CARD_SPACING
 
     # Active vertical zone: from screen top (0) to bottom of cards (+ generous tolerance)
-    if rel_y < 0 or rel_y > (TOP_MARGIN + CARD_HEIGHT + 45):
-        log(f"rel_y {rel_y} is outside drop zone [0, {TOP_MARGIN + CARD_HEIGHT + 45}]")
+    if rel_y < 0 or rel_y > (TOP_MARGIN + CARD_HEIGHT + 55):
+        log(f"rel_y {rel_y} is outside drop zone [0, {TOP_MARGIN + CARD_HEIGHT + 55}]")
         return
 
     start_x = (mw - total_width) / 2.0

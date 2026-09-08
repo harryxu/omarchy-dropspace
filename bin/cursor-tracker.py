@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dropspace_runtime
 
 BASE_CARD_WIDTH = 160
-CARD_HEIGHT = 100
+CARD_HEIGHT = 88
 CARD_SPACING = 16
 TOP_MARGIN = 36
 MAX_WORKSPACE_COUNT = 5
@@ -208,7 +208,7 @@ def main():
                 end_x = start_x + total_width
 
                 # Check vertical range
-                if 0 <= rel_y <= (TOP_MARGIN + CARD_HEIGHT + 45):
+                if 0 <= rel_y <= (TOP_MARGIN + CARD_HEIGHT + 55):
                     if start_x - 8 <= rel_x <= end_x + 8:
                         offset_x = rel_x - start_x
                         slot_width = card_width + CARD_SPACING
