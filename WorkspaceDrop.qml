@@ -60,6 +60,16 @@ Item {
   property var workspaceWindows: ({})
   property var workspaceAspects: ({})
 
+  function formatAppName(c) {
+    if (!c) return ""
+    var name = c["class"] || c["initialClass"] || c.title || ""
+    if (name.indexOf(".") !== -1) {
+      var parts = name.split(".")
+      name = parts[parts.length - 1]
+    }
+    return name
+  }
+
   function updateWindowData(jsonStr) {
     if (!jsonStr || typeof jsonStr !== "string" || jsonStr.trim().indexOf("{") !== 0) return
     try {
@@ -111,6 +121,7 @@ Item {
           rh: rh,
           activated: (c.focusHistoryID === 0),
           floating: !!c.floating,
+          appName: root.formatAppName(c),
           appClass: c["class"] || "",
           title: c.title || "",
           address: c.address || ""
@@ -361,6 +372,7 @@ Item {
                   height: Math.max(5, Math.round(modelData.rh * card.height))
 
                   radius: Math.min(3, card.radius)
+                  clip: true
 
                   color: modelData.activated
                     ? Util.alpha(Color.accent, 0.35)
@@ -374,6 +386,19 @@ Item {
                         ? Util.alpha(Color.accent, 0.65)
                         : Util.alpha(Color.menu.text, 0.4))
                   border.width: modelData.activated ? 1.5 : 1
+
+                  Text {
+                    anchors.centerIn: parent
+                    width: Math.max(0, parent.width - 4)
+                    visible: parent.width >= 24 && parent.height >= 14 && text.length > 0
+                    text: modelData.appName || ""
+                    color: modelData.activated ? Util.alpha(Color.menu.text, 0.72) : Util.alpha(Color.menu.text, 0.52)
+                    font.pixelSize: Math.max(8, Math.min(10, Math.floor(parent.height * 0.38)))
+                    font.family: Style.font.menuFamily
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                  }
                 }
               }
 
