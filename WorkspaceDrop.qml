@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -267,6 +268,16 @@ Item {
     // Allow mouse clicks on the container dock while keeping the rest click-through
     mask: Region { item: container }
 
+    // Drop shadow behind the container dock
+    RectangularShadow {
+      anchors.fill: container
+      radius: container.radius
+      blur: 28
+      offset: Qt.vector2d(0, 8)
+      color: Qt.rgba(0, 0, 0, 0.48)
+      opacity: container.opacity
+    }
+
     // Top workspace bar dock container with semi-transparent background
     Rectangle {
       id: container
@@ -278,7 +289,7 @@ Item {
       radius: (Style.cornerRadius > 0 ? Style.cornerRadius : 12) + 4
 
       // Semi-transparent background only behind the workspace bar dock
-      color: Util.alpha(Color.menu.background, 0.82)
+      color: Util.alpha(Color.menu.background, 0.94)
       border.color: Color.menu.border
       border.width: 1
 
