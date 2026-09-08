@@ -10,13 +10,6 @@ import dropspace_runtime
 
 dropspace_runtime.init_journal("dropspace-drop-handler")
 
-BASE_CARD_WIDTH = 160
-CARD_HEIGHT = 88
-CARD_SPACING = 16
-TOP_MARGIN = 36
-
-MAX_WORKSPACE_COUNT = 5
-
 def get_workspace_ids():
     ws_json = run_cmd("hyprctl workspaces -j")
     ids = []
@@ -42,7 +35,7 @@ def get_workspace_ids():
             ids.append(m)
 
     ids.sort()
-    return ids[:MAX_WORKSPACE_COUNT]
+    return ids[:dropspace_runtime.MAX_WORKSPACE_COUNT]
 
 def log(msg):
     dropspace_runtime.log(msg)
@@ -128,17 +121,13 @@ def main():
     count = len(workspace_ids)
     log(f"Dynamic workspace IDs: {workspace_ids}")
 
-    available = mw - 64
-    card_width = max(100, min(BASE_CARD_WIDTH, int((available - (count - 1) * CARD_SPACING) // count)))
-    total_width = count * card_width + (count - 1) * CARD_SPACING
+    card_width, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, count)
 
     # Active vertical zone: from screen top (0) to bottom of cards (+ generous tolerance)
-    if rel_y < 0 or rel_y > (TOP_MARGIN + CARD_HEIGHT + 55):
-        log(f"rel_y {rel_y} is outside drop zone [0, {TOP_MARGIN + CARD_HEIGHT + 55}]")
+    if not dropspace_runtime.is_in_vertical_drop_zone(rel_y):
+        log(f"rel_y {rel_y} is outside drop zone [0, {dropspace_runtime.TOP_MARGIN + dropspace_runtime.CARD_HEIGHT + dropspace_runtime.DROP_ZONE_EXTRA}]")
         return
 
-    start_x = (mw - total_width) / 2.0
-    end_x = start_x + total_width
     log(f"Cards horizontal range: [{start_x}, {end_x}], card_width={card_width}")
 
     if rel_x < (start_x - 16) or rel_x > (end_x + 16):
@@ -146,7 +135,7 @@ def main():
         return
 
     offset_x = rel_x - start_x
-    slot_width = card_width + CARD_SPACING
+    slot_width = card_width + dropspace_runtime.CARD_SPACING
     card_index = int(offset_x // slot_width)
     log(f"Calculated card_index: {card_index}")
 

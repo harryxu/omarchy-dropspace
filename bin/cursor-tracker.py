@@ -9,12 +9,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dropspace_runtime
 
-BASE_CARD_WIDTH = 160
-CARD_HEIGHT = 88
-CARD_SPACING = 16
-TOP_MARGIN = 36
-MAX_WORKSPACE_COUNT = 5
-
 def get_socket_path():
     sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
     if not sig:
@@ -94,7 +88,7 @@ def main():
                         if m not in ids:
                             ids.append(m)
                     ids.sort()
-                    workspace_ids = ids[:MAX_WORKSPACE_COUNT]
+                    workspace_ids = ids[:dropspace_runtime.MAX_WORKSPACE_COUNT]
                 except Exception:
                     pass
             last_meta_time = now
@@ -201,17 +195,13 @@ def main():
                 rel_y = cy - my
 
                 count = len(workspace_ids)
-                available = mw - 64
-                card_width = max(100, min(BASE_CARD_WIDTH, int((available - (count - 1) * CARD_SPACING) // count)))
-                total_width = count * card_width + (count - 1) * CARD_SPACING
-                start_x = (mw - total_width) / 2.0
-                end_x = start_x + total_width
+                card_width, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, count)
 
                 # Check vertical range
-                if 0 <= rel_y <= (TOP_MARGIN + CARD_HEIGHT + 55):
+                if dropspace_runtime.is_in_vertical_drop_zone(rel_y):
                     if start_x - 8 <= rel_x <= end_x + 8:
                         offset_x = rel_x - start_x
-                        slot_width = card_width + CARD_SPACING
+                        slot_width = card_width + dropspace_runtime.CARD_SPACING
                         card_index = int(offset_x // slot_width)
                         if 0 <= card_index < count:
                             hover_id = workspace_ids[card_index]

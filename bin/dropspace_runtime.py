@@ -16,6 +16,34 @@ LOG_FILENAME = "dropspace.log"
 PID_FILENAME = "edge_watcher.pid"
 _syslog_initialized = False
 
+# Workspace card layout constants
+BASE_CARD_WIDTH = 160
+CARD_HEIGHT = 88
+CARD_SPACING = 16
+TOP_MARGIN = 36
+MAX_WORKSPACE_COUNT = 5
+DROP_ZONE_EXTRA = 55
+
+
+def calc_card_layout(screen_width: float, workspace_count: int):
+    """Calculate card dimensions and horizontal positioning for workspace cards.
+
+    Returns:
+        tuple: (card_width, total_width, start_x, end_x)
+    """
+    count = max(1, min(workspace_count, MAX_WORKSPACE_COUNT))
+    available = screen_width - 64
+    card_width = max(100, min(BASE_CARD_WIDTH, int((available - (count - 1) * CARD_SPACING) // count)))
+    total_width = count * card_width + (count - 1) * CARD_SPACING
+    start_x = (screen_width - total_width) / 2.0
+    end_x = start_x + total_width
+    return card_width, total_width, start_x, end_x
+
+
+def is_in_vertical_drop_zone(rel_y: float) -> bool:
+    """Check if relative Y coordinate is within the top dock drop zone."""
+    return 0 <= rel_y <= (TOP_MARGIN + CARD_HEIGHT + DROP_ZONE_EXTRA)
+
 
 def init_journal(ident: str = "dropspace"):
     """Initialize connection to systemd user journal via syslog."""
