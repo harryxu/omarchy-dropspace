@@ -57,8 +57,121 @@ Item {
     return Math.max(100, Math.min(baseCardWidth, computed))
   }
 
+  property var workspaceWindows: ({})
+  property var workspaceAspects: ({})
+
+  function updateWindowData(jsonStr) {
+    try {
+      var data = JSON.parse(jsonStr)
+      var monitors = data.monitors || []
+      var clients = data.clients || []
+
+      var monMap = {}
+      for (var m = 0; m < monitors.length; m++) {
+        var mon = monitors[m]
+        var s = (mon.scale && mon.scale > 0) ? mon.scale : 1.0
+        monMap[mon.id] = {
+          x: mon.x / s,
+          y: mon.y / s,
+          width: mon.width / s,
+          height: mon.height / s
+        }
+      }
+
+      var defaultMon = monitors.length > 0 ? monMap[monitors[0].id] : { x: 0, y: 0, width: 1920, height: 1080 }
+      var wsMap = {}
+      var aspectMap = {}
+
+      for (var i = 0; i < clients.length; i++) {
+        var c = clients[i]
+        if (!c.workspace || c.hidden || !c.size || c.size[0] <= 0 || c.size[1] <= 0) continue
+
+        var wid = c.workspace.id
+        if (wid <= 0) continue
+
+        var targetMon = monMap[c.monitor] || defaultMon
+        aspectMap[wid] = targetMon.width / targetMon.height
+
+        var rx = (c.at[0] - targetMon.x) / targetMon.width
+        var ry = (c.at[1] - targetMon.y) / targetMon.height
+        var rw = c.size[0] / targetMon.width
+        var rh = c.size[1] / targetMon.height
+
+        rx = Math.max(0, Math.min(0.98, rx))
+        ry = Math.max(0, Math.min(0.98, ry))
+        rw = Math.max(0.04, Math.min(1 - rx, rw))
+        rh = Math.max(0.04, Math.min(1 - ry, rh))
+
+        if (!wsMap[wid]) wsMap[wid] = []
+        wsMap[wid].push({
+          rx: rx,
+          ry: ry,
+          rw: rw,
+          rh: rh,
+          activated: (c.focusHistoryID === 0),
+          floating: !!c.floating,
+          appClass: c["class"] || "",
+          title: c.title || "",
+          address: c.address || ""
+        })
+      }
+
+      root.workspaceWindows = wsMap
+      root.workspaceAspects = aspectMap
+    } catch(e) {
+      console.warn("Failed to parse window data: " + e)
+    }
+  }
+
+  function refreshWindows() {
+    if (clientsFetcher.running) {
+      clientsFetcher.running = false
+    }
+    clientsFetcher.running = true
+  }
+
+  Process {
+    id: clientsFetcher
+    command: ["bash", "-c", "echo '{\"monitors\":'$(hyprctl monitors -j)',\"clients\":'$(hyprctl clients -j)'}'"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.updateWindowData(text)
+      }
+    }
+  }
+
+  Timer {
+    id: livePollTimer
+    interval: 500
+    running: root.opened
+    repeat: true
+    onTriggered: root.refreshWindows()
+  }
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (root.opened) {
+        root.refreshWindows()
+      }
+    }
+    function onFocusedWorkspaceChanged() {
+      if (root.opened) {
+        root.refreshWindows()
+      }
+    }
+  }
+
+  onOpenedChanged: {
+    if (root.opened) {
+      root.refreshWindows()
+    }
+  }
+
   function open(payloadJson) {
     root.opened = true
+    root.refreshWindows()
     Quickshell.execDetached(["/usr/bin/python3", root.pluginDir + "/bin/dropspace-state.py", "open"])
   }
 
@@ -184,7 +297,8 @@ Item {
             readonly property var ws: workspaceSlot.getWorkspace(modelData)
             readonly property bool isCurrent: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
             readonly property bool isHovered: root.hoveredWorkspaceId === modelData
-            readonly property int windowCount: ws !== null ? ws.toplevels.values.length : 0
+            readonly property var windowList: root.workspaceWindows[modelData] || []
+            readonly property int windowCount: windowList.length
             readonly property string workspaceName: (ws && ws.name && ws.name !== "" && ws.name !== String(modelData)) ? ws.name : ("Workspace " + modelData)
 
             spacing: 8
@@ -211,46 +325,96 @@ Item {
               border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.border
               border.width: workspaceSlot.isHovered ? 3 : (workspaceSlot.isCurrent ? 2 : 1)
 
-              ColumnLayout {
-                anchors.centerIn: parent
-                spacing: 6
+              // Miniature desktop representation
+              Item {
+                id: miniDesktopContainer
+                anchors.fill: parent
+                anchors.margins: 10
 
-                Text {
-                  Layout.alignment: Qt.AlignHCenter
-                  text: workspaceSlot.isHovered ? "󰁝" : "󱂬"
-                  color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Util.alpha(Color.menu.text, 0.7)
-                  font.pixelSize: Style.font.display
-                  font.family: Style.font.menuFamily
-                }
+                readonly property real aspect: root.workspaceAspects[workspaceSlot.modelData] || (panel.screen ? (panel.screen.width / panel.screen.height) : (16 / 10))
 
-                // Status badge pill
                 Rectangle {
-                  Layout.alignment: Qt.AlignHCenter
-                  implicitWidth: badgeText.implicitWidth + 14
-                  implicitHeight: badgeText.implicitHeight + 6
-                  radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 8
+                  id: miniDesktop
+                  anchors.centerIn: parent
+                  width: Math.min(parent.width, Math.round(parent.height * miniDesktopContainer.aspect))
+                  height: Math.min(parent.height, Math.round(parent.width / miniDesktopContainer.aspect))
+                  radius: Math.max(2, (Style.cornerRadius > 0 ? Style.cornerRadius - 6 : 4))
 
-                  color: workspaceSlot.isHovered
-                    ? Color.accent
-                    : (workspaceSlot.isCurrent ? Color.accent : (workspaceSlot.windowCount > 0 ? Util.alpha(Color.foreground, 0.12) : "transparent"))
-
+                  color: Util.alpha(Color.menu.background, 0.7)
                   border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent)
-                    ? "transparent"
-                    : (workspaceSlot.windowCount > 0 ? "transparent" : Util.alpha(Color.muted, 0.4))
+                    ? Util.alpha(Color.accent, 0.45)
+                    : Util.alpha(Color.menu.border, 0.6)
                   border.width: 1
+                  clip: true
 
+                  // Empty workspace placeholder
                   Text {
-                    id: badgeText
                     anchors.centerIn: parent
-                    text: workspaceSlot.isHovered
-                      ? "Drop to move"
-                      : (workspaceSlot.isCurrent ? "Active" : (workspaceSlot.windowCount > 0 ? (workspaceSlot.windowCount + (workspaceSlot.windowCount === 1 ? " window" : " windows")) : "Empty"))
-                    color: (workspaceSlot.isHovered || workspaceSlot.isCurrent)
-                      ? Color.background
-                      : (workspaceSlot.windowCount > 0 ? Color.menu.text : Color.muted)
-                    font.bold: workspaceSlot.isHovered || workspaceSlot.isCurrent
+                    visible: workspaceSlot.windowCount === 0 && !workspaceSlot.isHovered
+                    text: "Empty"
+                    color: Util.alpha(Color.muted, 0.65)
                     font.pixelSize: Style.font.caption
                     font.family: Style.font.menuFamily
+                  }
+
+                  // Wireframe window rectangles
+                  Repeater {
+                    model: workspaceSlot.windowList
+
+                    Rectangle {
+                      id: winWireframe
+                      required property var modelData
+
+                      x: Math.round(modelData.rx * miniDesktop.width)
+                      y: Math.round(modelData.ry * miniDesktop.height)
+                      width: Math.max(5, Math.round(modelData.rw * miniDesktop.width))
+                      height: Math.max(5, Math.round(modelData.rh * miniDesktop.height))
+
+                      radius: 2
+
+                      color: modelData.activated
+                        ? Util.alpha(Color.accent, 0.35)
+                        : (workspaceSlot.isCurrent
+                            ? Util.alpha(Color.accent, 0.18)
+                            : Util.alpha(Color.foreground, 0.12))
+
+                      border.color: modelData.activated
+                        ? Color.accent
+                        : (workspaceSlot.isCurrent
+                            ? Util.alpha(Color.accent, 0.65)
+                            : Util.alpha(Color.menu.text, 0.4))
+                      border.width: modelData.activated ? 1.5 : 1
+                    }
+                  }
+
+                  // Drop indicator pill when dragging over this card
+                  Rectangle {
+                    anchors.centerIn: parent
+                    visible: workspaceSlot.isHovered
+                    implicitWidth: dropRow.implicitWidth + 12
+                    implicitHeight: dropRow.implicitHeight + 6
+                    radius: 6
+                    color: Color.accent
+
+                    RowLayout {
+                      id: dropRow
+                      anchors.centerIn: parent
+                      spacing: 4
+
+                      Text {
+                        text: "󰁝"
+                        color: Color.background
+                        font.pixelSize: Style.font.caption
+                        font.family: Style.font.menuFamily
+                      }
+                      Text {
+                        text: "Drop"
+                        color: Color.background
+                        font.bold: true
+                        font.pixelSize: Style.font.caption
+                        font.family: Style.font.menuFamily
+                      }
+                    }
                   }
                 }
               }
