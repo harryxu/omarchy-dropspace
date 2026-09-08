@@ -195,10 +195,10 @@ def main():
                 rel_y = cy - my
 
                 count = len(workspace_ids)
-                card_width, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, count)
+                card_width, card_height, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, mh, count)
 
-                # Check vertical range
-                if dropspace_runtime.is_in_vertical_drop_zone(rel_y):
+                # Check vertical range with dynamic card height
+                if dropspace_runtime.is_in_vertical_drop_zone(rel_y, card_height):
                     if start_x - 8 <= rel_x <= end_x + 8:
                         offset_x = rel_x - start_x
                         slot_width = card_width + dropspace_runtime.CARD_SPACING

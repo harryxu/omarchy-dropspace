@@ -121,11 +121,11 @@ def main():
     count = len(workspace_ids)
     log(f"Dynamic workspace IDs: {workspace_ids}")
 
-    card_width, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, count)
+    card_width, card_height, total_width, start_x, end_x = dropspace_runtime.calc_card_layout(mw, mh, count)
 
     # Active vertical zone: from screen top (0) to bottom of cards (+ generous tolerance)
-    if not dropspace_runtime.is_in_vertical_drop_zone(rel_y):
-        log(f"rel_y {rel_y} is outside drop zone [0, {dropspace_runtime.TOP_MARGIN + dropspace_runtime.CARD_HEIGHT + dropspace_runtime.DROP_ZONE_EXTRA}]")
+    if not dropspace_runtime.is_in_vertical_drop_zone(rel_y, card_height):
+        log(f"rel_y {rel_y} is outside drop zone [0, {dropspace_runtime.TOP_MARGIN + card_height + dropspace_runtime.DROP_ZONE_EXTRA}]")
         return
 
     log(f"Cards horizontal range: [{start_x}, {end_x}], card_width={card_width}")

@@ -18,7 +18,7 @@ Item {
   readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : (home + "/.config/omarchy/plugins/harryxu.dropspace")
 
   readonly property int baseCardWidth: 160
-  readonly property int cardHeight: 88
+  readonly property int cardHeight: 100
   readonly property int cardSpacing: 16
   readonly property int topMargin: 36
 
@@ -257,7 +257,7 @@ Item {
       anchors.topMargin: root.opened ? root.topMargin : -height - 50
       anchors.horizontalCenter: parent.horizontalCenter
       width: rowLayout.implicitWidth + 24
-      height: rowLayout.implicitHeight + 24
+      height: rowLayout.implicitHeight + 26
       radius: (Style.cornerRadius > 0 ? Style.cornerRadius : 12) + 4
 
       // Semi-transparent background only behind the workspace bar dock
@@ -307,10 +307,13 @@ Item {
             Rectangle {
               id: card
 
+              readonly property real aspect: root.workspaceAspects[workspaceSlot.modelData] || (panel.screen ? (panel.screen.width / panel.screen.height) : (16 / 10))
+
               Layout.preferredWidth: root.cardWidth
-              Layout.preferredHeight: root.cardHeight
+              Layout.preferredHeight: Math.round(root.cardWidth / aspect)
               Layout.alignment: Qt.AlignHCenter
-              radius: Style.cornerRadius > 0 ? Style.cornerRadius : 12
+              radius: Style.cornerRadius > 0 ? Math.min(Style.cornerRadius, 8) : 6
+              clip: true
 
               scale: workspaceSlot.isHovered ? 1.05 : 1.0
               Behavior on scale {
@@ -320,101 +323,77 @@ Item {
               // Colors strictly bound to Omarchy theme
               color: workspaceSlot.isHovered
                 ? Util.alpha(Color.accent, 0.28)
-                : (workspaceSlot.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.95))
+                : (workspaceSlot.isCurrent ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.menu.background, 0.88))
 
               border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent) ? Color.accent : Color.menu.border
               border.width: workspaceSlot.isHovered ? 3 : (workspaceSlot.isCurrent ? 2 : 1)
 
-              // Miniature desktop representation
-              Item {
-                id: miniDesktopContainer
-                anchors.fill: parent
-                anchors.margins: 10
+              // Empty workspace placeholder
+              Text {
+                anchors.centerIn: parent
+                visible: workspaceSlot.windowCount === 0 && !workspaceSlot.isHovered
+                text: "Empty"
+                color: Util.alpha(Color.muted, 0.65)
+                font.pixelSize: Style.font.caption
+                font.family: Style.font.menuFamily
+              }
 
-                readonly property real aspect: root.workspaceAspects[workspaceSlot.modelData] || (panel.screen ? (panel.screen.width / panel.screen.height) : (16 / 10))
+              // Wireframe window rectangles directly inside card
+              Repeater {
+                model: workspaceSlot.windowList
 
                 Rectangle {
-                  id: miniDesktop
+                  id: winWireframe
+                  required property var modelData
+
+                  x: Math.round(modelData.rx * card.width)
+                  y: Math.round(modelData.ry * card.height)
+                  width: Math.max(5, Math.round(modelData.rw * card.width))
+                  height: Math.max(5, Math.round(modelData.rh * card.height))
+
+                  radius: Math.min(3, card.radius)
+
+                  color: modelData.activated
+                    ? Util.alpha(Color.accent, 0.35)
+                    : (workspaceSlot.isCurrent
+                        ? Util.alpha(Color.accent, 0.18)
+                        : Util.alpha(Color.foreground, 0.12))
+
+                  border.color: modelData.activated
+                    ? Color.accent
+                    : (workspaceSlot.isCurrent
+                        ? Util.alpha(Color.accent, 0.65)
+                        : Util.alpha(Color.menu.text, 0.4))
+                  border.width: modelData.activated ? 1.5 : 1
+                }
+              }
+
+              // Drop indicator pill when dragging over this card
+              Rectangle {
+                anchors.centerIn: parent
+                visible: workspaceSlot.isHovered
+                implicitWidth: dropRow.implicitWidth + 14
+                implicitHeight: dropRow.implicitHeight + 6
+                radius: 6
+                color: Color.accent
+
+                RowLayout {
+                  id: dropRow
                   anchors.centerIn: parent
-                  width: Math.min(parent.width, Math.round(parent.height * miniDesktopContainer.aspect))
-                  height: Math.min(parent.height, Math.round(parent.width / miniDesktopContainer.aspect))
-                  radius: Math.max(2, (Style.cornerRadius > 0 ? Style.cornerRadius - 6 : 4))
+                  spacing: 4
 
-                  color: Util.alpha(Color.menu.background, 0.7)
-                  border.color: (workspaceSlot.isHovered || workspaceSlot.isCurrent)
-                    ? Util.alpha(Color.accent, 0.45)
-                    : Util.alpha(Color.menu.border, 0.6)
-                  border.width: 1
-                  clip: true
-
-                  // Empty workspace placeholder
                   Text {
-                    anchors.centerIn: parent
-                    visible: workspaceSlot.windowCount === 0 && !workspaceSlot.isHovered
-                    text: "Empty"
-                    color: Util.alpha(Color.muted, 0.65)
+                    text: "󰁝"
+                    color: Color.background
                     font.pixelSize: Style.font.caption
                     font.family: Style.font.menuFamily
                   }
-
-                  // Wireframe window rectangles
-                  Repeater {
-                    model: workspaceSlot.windowList
-
-                    Rectangle {
-                      id: winWireframe
-                      required property var modelData
-
-                      x: Math.round(modelData.rx * miniDesktop.width)
-                      y: Math.round(modelData.ry * miniDesktop.height)
-                      width: Math.max(5, Math.round(modelData.rw * miniDesktop.width))
-                      height: Math.max(5, Math.round(modelData.rh * miniDesktop.height))
-
-                      radius: 2
-
-                      color: modelData.activated
-                        ? Util.alpha(Color.accent, 0.35)
-                        : (workspaceSlot.isCurrent
-                            ? Util.alpha(Color.accent, 0.18)
-                            : Util.alpha(Color.foreground, 0.12))
-
-                      border.color: modelData.activated
-                        ? Color.accent
-                        : (workspaceSlot.isCurrent
-                            ? Util.alpha(Color.accent, 0.65)
-                            : Util.alpha(Color.menu.text, 0.4))
-                      border.width: modelData.activated ? 1.5 : 1
-                    }
-                  }
-
-                  // Drop indicator pill when dragging over this card
-                  Rectangle {
-                    anchors.centerIn: parent
-                    visible: workspaceSlot.isHovered
-                    implicitWidth: dropRow.implicitWidth + 12
-                    implicitHeight: dropRow.implicitHeight + 6
-                    radius: 6
-                    color: Color.accent
-
-                    RowLayout {
-                      id: dropRow
-                      anchors.centerIn: parent
-                      spacing: 4
-
-                      Text {
-                        text: "󰁝"
-                        color: Color.background
-                        font.pixelSize: Style.font.caption
-                        font.family: Style.font.menuFamily
-                      }
-                      Text {
-                        text: "Drop"
-                        color: Color.background
-                        font.bold: true
-                        font.pixelSize: Style.font.caption
-                        font.family: Style.font.menuFamily
-                      }
-                    }
+                  Text {
+                    text: "Drop"
+                    color: Color.background
+                    font.bold: true
+                    font.pixelSize: Style.font.caption
+                    font.family: Style.font.menuFamily
                   }
                 }
               }

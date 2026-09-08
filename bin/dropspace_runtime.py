@@ -18,31 +18,35 @@ _syslog_initialized = False
 
 # Workspace card layout constants
 BASE_CARD_WIDTH = 160
-CARD_HEIGHT = 88
+DEFAULT_CARD_HEIGHT = 100
 CARD_SPACING = 16
 TOP_MARGIN = 36
 MAX_WORKSPACE_COUNT = 5
-DROP_ZONE_EXTRA = 55
+DROP_ZONE_EXTRA = 60
 
 
-def calc_card_layout(screen_width: float, workspace_count: int):
+def calc_card_layout(screen_width: float, screen_height: float, workspace_count: int):
     """Calculate card dimensions and horizontal positioning for workspace cards.
 
     Returns:
-        tuple: (card_width, total_width, start_x, end_x)
+        tuple: (card_width, card_height, total_width, start_x, end_x)
     """
     count = max(1, min(workspace_count, MAX_WORKSPACE_COUNT))
     available = screen_width - 64
     card_width = max(100, min(BASE_CARD_WIDTH, int((available - (count - 1) * CARD_SPACING) // count)))
+
+    aspect = (screen_width / screen_height) if screen_height > 0 else (16.0 / 10.0)
+    card_height = max(50, round(card_width / aspect))
+
     total_width = count * card_width + (count - 1) * CARD_SPACING
     start_x = (screen_width - total_width) / 2.0
     end_x = start_x + total_width
-    return card_width, total_width, start_x, end_x
+    return card_width, card_height, total_width, start_x, end_x
 
 
-def is_in_vertical_drop_zone(rel_y: float) -> bool:
+def is_in_vertical_drop_zone(rel_y: float, card_height: float = DEFAULT_CARD_HEIGHT) -> bool:
     """Check if relative Y coordinate is within the top dock drop zone."""
-    return 0 <= rel_y <= (TOP_MARGIN + CARD_HEIGHT + DROP_ZONE_EXTRA)
+    return 0 <= rel_y <= (TOP_MARGIN + card_height + DROP_ZONE_EXTRA)
 
 
 def init_journal(ident: str = "dropspace"):
