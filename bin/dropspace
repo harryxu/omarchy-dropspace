@@ -27,7 +27,7 @@ try:
     if not data.get("auto_bind"):
         print("DISABLED (manual bindings mode)")
     else:
-        print(data.get("shortcut", "SUPER + d") + " (auto-registered)")
+        print(data.get("shortcut", "SUPER + ALT + D") + " (auto-registered)")
 except Exception:
     print(sys.argv[1])
 ' "$svc_raw" 2>/dev/null || echo "$svc_raw")"
@@ -42,7 +42,7 @@ except Exception:
     if [ -n "$watcher_pid" ]; then
         echo "Top-Edge Daemon (edge-watcher)  : RUNNING (PID: $watcher_pid)"
     else
-        echo "Top-Edge Daemon (edge-watcher)  : NOT RUNNING (SUPER+D keybind mode only)"
+        echo "Top-Edge Daemon (edge-watcher)  : NOT RUNNING (SUPER+ALT+D keybind mode only)"
     fi
 
     # Check UI state
@@ -62,19 +62,19 @@ path = "'"$CONFIG"'"
 try:
     with open(path, "r") as f:
         cfg = json.load(f)
-    sc = cfg.get("shortcut", "SUPER + d")
+    sc = cfg.get("shortcut", "SUPER + ALT + D")
     ab = cfg.get("auto_bind", True)
     if sc is False or ab is False:
         print("  Current mode: Auto-bind DISABLED (manual ~/.config/hypr/bindings.lua)")
     else:
         print("  Current shortcut: " + str(sc) + " (auto-managed)")
 except Exception as e:
-    print("  Default: SUPER + d (auto-managed)")
+    print("  Default: SUPER + ALT + D (auto-managed)")
 '
             echo ""
             echo "Usage:"
             echo "  dropspace shortcut \"SUPER + ALT + D\"    Set a new custom shortcut"
-            echo "  dropspace shortcut default              Restore default shortcut (SUPER + D)"
+            echo "  dropspace shortcut default              Restore default shortcut (SUPER + ALT + D)"
             echo "  dropspace shortcut disable              Disable auto-bind (use manual ~/.config/hypr/bindings.lua)"
             ;;
         default)
@@ -86,12 +86,12 @@ try:
         cfg = json.load(f)
 except Exception:
     cfg = {}
-cfg["shortcut"] = "SUPER + d"
+cfg["shortcut"] = "SUPER + ALT + D"
 cfg["auto_bind"] = True
 with open(path, "w") as f:
     json.dump(cfg, f, indent=2)
 '
-            echo "✓ Shortcut restored to default: SUPER + d"
+            echo "✓ Shortcut restored to default: SUPER + ALT + D"
             ;;
         disable|off|false)
             python3 -c '
@@ -168,7 +168,7 @@ cmd_setup() {
 
     echo "✓ Configuration: $CONFIG"
     echo "✓ Keybindings: Managed automatically by background service (Service.qml)"
-    echo "  Default: SUPER + D (toggle overlay) and SUPER + Left Mouse release (drop)"
+    echo "  Default: SUPER + ALT + D (toggle overlay) and SUPER + Left Mouse release (drop)"
     echo "  (No manual edits to ~/.config/hypr/bindings.lua required)"
     echo ""
     echo "  To view or customize shortcut:"
