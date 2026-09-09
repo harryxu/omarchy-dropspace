@@ -5,7 +5,7 @@ Visual workspace drag-and-drop overlay for Omarchy.
 Drag a window onto a workspace card at the top of the screen to move the window and focus the target workspace.
 
 
-<video src="https://github.com/user-attachments/assets/3bb135a1-b160-4a84-9165-009ff2de7ee5" poster="preview.png" controls></video>
+<video src="https://github.com/user-attachments/assets/8f11551c-c3ed-413b-a9ed-dd6e6c67c1cd" controls></video>
 ## Installation
 
 ```sh
