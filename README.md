@@ -16,6 +16,13 @@ Keybindings are registered automatically by the background service and restored 
 - `SUPER + ALT + D`: Toggle workspace overlay
 - `SUPER + Left Mouse Release`: Drop dragged window into target workspace
 
+## Usage
+
+1. Press `SUPER + ALT + D` to open workspace targets.
+2. Drag any window onto a workspace card.
+
+## Optional setup
+
 ### Customizing Keybindings
 
 The trigger shortcut defaults to `SUPER + ALT + D`. If this combination is already assigned in your `bindings.lua`, DropSpace leaves it alone.
@@ -37,14 +44,8 @@ You can modify or disable the shortcut:
   ```
   Set `"shortcut": false` to disable automatic binding and manage it manually in `~/.config/hypr/bindings.lua`.
 
-## Usage
 
-1. Press `SUPER + ALT + D` to open workspace targets.
-2. Drag any window (`SUPER + Left Click`) onto a workspace card.
-3. Release the mouse button to move the window to that workspace.
-4. Press `Escape` or `SUPER + ALT + D` to dismiss without moving.
-
-### Optional: Top-Edge Trigger
+### Top-Edge Trigger
 
 To automatically reveal the workspace bar when dragging a window toward the top edge, add this to `~/.config/hypr/autostart.lua`:
 
