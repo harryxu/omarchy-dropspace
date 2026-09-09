@@ -11,36 +11,48 @@ Drag a window onto a target workspace card at the top of the screen and release 
 
 ## Install
 
-### 1. Add the Plugin to Omarchy
-
 ```sh
 omarchy plugin add https://github.com/harryxu/omarchy-dropspace.git --enable
+omarchy restart shell
 ```
 
-### 2. Add Hyprland Keybindings
+**That's it!** DropSpace is now ready to [use](#usage) immediately with `SUPER + D`. Keybindings (`SUPER + D` to toggle and `SUPER + Left Mouse Release` to drop) are managed automatically by DropSpace's background service.
 
-Add the following bindings to `~/.config/hypr/bindings.lua`:
+---
 
-```lua
-local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/drop-handler.sh"
-o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '{}'")
-o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })
-```
+### Customizing the Shortcut
 
-Reload Hyprland to apply:
+DropSpace works out of the box with `SUPER + D`, but you can customize it at any time:
 
-```sh
-hyprctl reload
-```
+- **Via CLI** (Instant hot reload, no restart required):
+  ```sh
+  dropspace shortcut "SUPER + ALT + D"    # Set custom shortcut
+  dropspace shortcut default              # Restore default SUPER + D
+  dropspace shortcut disable              # Disable auto-managed shortcut
+  ```
 
-**That's it!** DropSpace is now ready to [use](#usage) with `SUPER + D`.
+- **Via Configuration File**:
+  Edit `~/.config/omarchy/dropspace.json`:
+  ```json
+  {
+    "shortcut": "SUPER + ALT + D"
+  }
+  ```
+
+- **Via `~/.config/hypr/bindings.lua` (Manual Management)**:
+  If you prefer managing all bindings in your Hyprland configuration:
+  1. Set `"shortcut": false` in `~/.config/omarchy/dropspace.json`.
+  2. Add your custom binding to `~/.config/hypr/bindings.lua`:
+     ```lua
+     o.bind("SUPER + z", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '{}'")
+     ```
 
 ---
 
 ### Optional Setup
 
 #### Enable Top Edge Push Trigger
-If you want the workspace bar to automatically slide down when dragging a window toward the top edge, add this to `~/.config/hypr/autostart.lua`:
+If you want the workspace bar to automatically slide down when dragging a window toward the top edge of the screen, add this to `~/.config/hypr/autostart.lua`:
 
 ```lua
 local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace-autostart.sh"
@@ -50,7 +62,7 @@ hl.exec_cmd(dropspace_autostart)
 Then run `hyprctl reload` to launch it immediately.
 
 #### CLI Command Symlink
-If you want to use the `dropspace` CLI utility directly from anywhere in your terminal (to check status, view configuration, or uninstall), run the setup helper to create the `~/.local/bin/dropspace` symlink:
+If you want to use the `dropspace` CLI utility directly from anywhere in your terminal (to check status, view configuration, customize shortcuts, or uninstall), run:
 
 ```sh
 ~/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace setup
@@ -85,11 +97,13 @@ Configuration file location: `~/.config/omarchy/dropspace.json`
 
 ```json
 {
+  "shortcut": "SUPER + d",
   "top_edge_threshold": 12,
   "cancel_threshold": 180
 }
 ```
 
+- `shortcut`: Trigger keybinding to toggle the overlay (string, default: `"SUPER + d"`, or `false` to disable auto-binding).
 - `top_edge_threshold`: Distance from the top screen edge to summon the panel (pixels, default: `12`).
 - `cancel_threshold`: Downward distance from the top edge to auto-dismiss when pulling away (pixels, default: `180`).
 
@@ -97,11 +111,11 @@ Configuration file location: `~/.config/omarchy/dropspace.json`
 
 ## Remove
 
-To safely and completely remove DropSpace without leaving dangling processes or broken bindings:
+To safely and completely remove DropSpace:
 
-### 1. Run the Uninstall Helper
+### 1. Run the Uninstall Helper (Optional)
 
-Stops running daemons, removes temporary files, and unlinks `~/.local/bin/dropspace`:
+Stops background daemons, cleans up temporary files, and removes the CLI symlink:
 
 ```sh
 dropspace uninstall
@@ -114,15 +128,10 @@ dropspace uninstall
 
 ```sh
 omarchy plugin remove harryxu.dropspace
+omarchy restart shell
 ```
 
-### 3. Clean up Hyprland Configuration
-
-Remove or comment out the DropSpace lines from `~/.config/hypr/bindings.lua` (and `~/.config/hypr/autostart.lua` if added), then reload:
-
-```sh
-hyprctl reload
-```
+Keybindings are automatically released when the plugin is removed. If you added optional top-edge triggering in `~/.config/hypr/autostart.lua` (or legacy manual lines in `bindings.lua`), remove those lines and run `hyprctl reload`.
 
 ---
 

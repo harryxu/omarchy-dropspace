@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "id": "harryxu.dropspace",
   "name": "DropSpace",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "harryxu",
   "description": "Drag and drop window into workspace via top drop zone",
   "kinds": [
-    "overlay"
+    "overlay",
+    "service"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "overlay": "WorkspaceDrop.qml"
+    "overlay": "WorkspaceDrop.qml",
+    "service": "Service.qml"
   }
 }
