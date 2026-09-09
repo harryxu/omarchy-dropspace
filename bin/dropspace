@@ -14,19 +14,121 @@ cmd_status() {
     ensure_config
     echo "=== DropSpace Status ==="
     
+    # Check background service
+    local svc_raw
+    svc_raw="$(omarchy-shell harryxu.dropspace.service status 2>/dev/null || true)"
+    if [ -n "$svc_raw" ]; then
+        echo "Background Service (Service.qml): ACTIVE"
+        local key
+        key="$(python3 -c '
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+    if not data.get("auto_bind"):
+        print("DISABLED (manual bindings mode)")
+    else:
+        print(data.get("shortcut", "SUPER + ALT + D") + " (auto-registered)")
+except Exception:
+    print(sys.argv[1])
+' "$svc_raw" 2>/dev/null || echo "$svc_raw")"
+        echo "Active Keybinding               : $key"
+    else
+        echo "Background Service (Service.qml): NOT RUNNING (run 'omarchy restart shell' if recently installed)"
+    fi
+
     # Check process
     local watcher_pid
     watcher_pid="$(python3 "$SCRIPT_DIR/dropspace-state.py" watcher-pid 2>/dev/null || true)"
     if [ -n "$watcher_pid" ]; then
-        echo "Top-Edge Daemon (edge-watcher): RUNNING (PID: $watcher_pid)"
+        echo "Top-Edge Daemon (edge-watcher)  : RUNNING (PID: $watcher_pid)"
     else
-        echo "Top-Edge Daemon (edge-watcher): NOT RUNNING (SUPER+D keybind mode only)"
+        echo "Top-Edge Daemon (edge-watcher)  : NOT RUNNING (SUPER+ALT+D keybind mode only)"
     fi
 
     # Check UI state
     UI_STATE=$(omarchy-shell harryxu.dropspace state 2>/dev/null || omarchy-shell dropspace state 2>/dev/null || echo "unknown")
-    echo "DropSpace UI State            : $UI_STATE"
-    echo "Configuration file            : $CONFIG"
+    echo "DropSpace UI State              : $UI_STATE"
+    echo "Configuration file              : $CONFIG"
+}
+
+cmd_shortcut() {
+    ensure_config
+    case "$1" in
+        "")
+            echo "=== DropSpace Keybinding Configuration ==="
+            python3 -c '
+import json
+path = "'"$CONFIG"'"
+try:
+    with open(path, "r") as f:
+        cfg = json.load(f)
+    sc = cfg.get("shortcut", "SUPER + ALT + D")
+    ab = cfg.get("auto_bind", True)
+    if sc is False or ab is False:
+        print("  Current mode: Auto-bind DISABLED (manual ~/.config/hypr/bindings.lua)")
+    else:
+        print("  Current shortcut: " + str(sc) + " (auto-managed)")
+except Exception as e:
+    print("  Default: SUPER + ALT + D (auto-managed)")
+'
+            echo ""
+            echo "Usage:"
+            echo "  dropspace shortcut \"SUPER + ALT + D\"    Set a new custom shortcut"
+            echo "  dropspace shortcut default              Restore default shortcut (SUPER + ALT + D)"
+            echo "  dropspace shortcut disable              Disable auto-bind (use manual ~/.config/hypr/bindings.lua)"
+            ;;
+        default)
+            python3 -c '
+import json
+path = "'"$CONFIG"'"
+try:
+    with open(path, "r") as f:
+        cfg = json.load(f)
+except Exception:
+    cfg = {}
+cfg["shortcut"] = "SUPER + ALT + D"
+cfg["auto_bind"] = True
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+'
+            echo "✓ Shortcut restored to default: SUPER + ALT + D"
+            ;;
+        disable|off|false)
+            python3 -c '
+import json
+path = "'"$CONFIG"'"
+try:
+    with open(path, "r") as f:
+        cfg = json.load(f)
+except Exception:
+    cfg = {}
+cfg["shortcut"] = False
+cfg["auto_bind"] = False
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+'
+            echo "✓ Auto-bind disabled in $CONFIG."
+            echo "  DropSpace will not auto-register shortcuts. You can define them in ~/.config/hypr/bindings.lua."
+            ;;
+        *)
+            local new_key="$1"
+            python3 -c '
+import json, sys
+path = "'"$CONFIG"'"
+try:
+    with open(path, "r") as f:
+        cfg = json.load(f)
+except Exception:
+    cfg = {}
+cfg["shortcut"] = sys.argv[1]
+cfg["auto_bind"] = True
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+' "$new_key"
+            echo "✓ Shortcut set to: $new_key"
+            echo "  Background service will update Hyprland automatically."
+            ;;
+    esac
 }
 
 cmd_enable() {
@@ -65,18 +167,21 @@ cmd_setup() {
     fi
 
     echo "✓ Configuration: $CONFIG"
+    echo "✓ Keybindings: Managed automatically by background service (Service.qml)"
+    echo "  Default: SUPER + ALT + D (toggle overlay) and SUPER + Left Mouse release (drop)"
+    echo "  (No manual edits to ~/.config/hypr/bindings.lua required)"
+    echo ""
+    echo "  To view or customize shortcut:"
+    echo "    dropspace shortcut \"SUPER + ALT + D\""
+    echo "    dropspace shortcut disable   # to switch to manual ~/.config/hypr/bindings.lua"
     echo ""
 
     local bindings_file="$HOME/.config/hypr/bindings.lua"
     if [ -f "$bindings_file" ] && grep -q "dropspace" "$bindings_file"; then
-        echo "✓ Keybindings: Detected in ~/.config/hypr/bindings.lua"
-    else
-        echo "➜ Keybindings (add to ~/.config/hypr/bindings.lua):"
-        echo '  local dropspace_handler = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/drop-handler.sh"'
-        echo '  o.bind("SUPER + d", "DropSpace: Toggle workspace targets", "omarchy-shell shell toggle harryxu.dropspace '\''{}'\''")'
-        echo '  o.bind("SUPER + mouse:272", "DropSpace: Drop window to workspace", dropspace_handler, { mouse = true, release = true })'
+        echo "ℹ Note: Found legacy DropSpace lines in ~/.config/hypr/bindings.lua."
+        echo "  They are no longer required and can be safely removed."
+        echo ""
     fi
-    echo ""
 
     local autostart_file="$HOME/.config/hypr/autostart.lua"
     if [ -f "$autostart_file" ] && grep -q "dropspace-autostart.sh" "$autostart_file"; then
@@ -85,11 +190,10 @@ cmd_setup() {
         echo "➜ Top-edge trigger (optional, add to ~/.config/hypr/autostart.lua):"
         echo '  local dropspace_autostart = (os.getenv("HOME") or "") .. "/.config/omarchy/plugins/harryxu.dropspace/bin/dropspace-autostart.sh"'
         echo '  hl.exec_cmd(dropspace_autostart)'
+        echo ""
+        echo "➜ Apply optional autostart:"
+        echo "  hyprctl reload"
     fi
-    echo ""
-
-    echo "➜ Apply changes:"
-    echo "  hyprctl reload"
 }
 
 cmd_uninstall() {
@@ -132,24 +236,29 @@ cmd_uninstall() {
     fi
     echo ""
 
-    echo "Cleanup steps:"
+    echo "Removal steps:"
+    echo "  • Run: omarchy plugin remove harryxu.dropspace"
+    echo "  • Run: omarchy restart shell"
+
     local bindings_file="$HOME/.config/hypr/bindings.lua"
     if [ -f "$bindings_file" ] && grep -q "dropspace" "$bindings_file"; then
-        echo "  • Remove DropSpace lines from ~/.config/hypr/bindings.lua"
+        echo "  • (Legacy) Remove DropSpace lines from ~/.config/hypr/bindings.lua if previously added"
     fi
 
     local autostart_file="$HOME/.config/hypr/autostart.lua"
     if [ -f "$autostart_file" ] && grep -q "dropspace-autostart.sh" "$autostart_file"; then
         echo "  • Remove DropSpace line from ~/.config/hypr/autostart.lua"
+        echo "  • Run: hyprctl reload"
     fi
-
-    echo "  • Run: omarchy plugin remove harryxu.dropspace"
-    echo "  • Run: hyprctl reload"
 }
 
 case "$1" in
     status)
         cmd_status
+        ;;
+    shortcut)
+        shift
+        cmd_shortcut "$@"
         ;;
     setup)
         cmd_setup
@@ -189,7 +298,8 @@ case "$1" in
         echo ""
         echo "Usage:"
         echo "  dropspace status                 Check current status and configuration"
-        echo "  dropspace setup                  Set up CLI symlink and show binding setup"
+        echo "  dropspace shortcut [key]         View or customize shortcut (e.g. 'SUPER + ALT + D')"
+        echo "  dropspace setup                  Set up CLI symlink and display status"
         echo "  dropspace uninstall [--purge]    Stop daemons and clean up files before plugin removal"
         echo "  dropspace edge-watcher enable    Enable top-edge auto detection"
         echo "  dropspace edge-watcher disable   Disable top-edge auto detection (pure SUPER+D mode)"
